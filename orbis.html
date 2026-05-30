@@ -12,7 +12,16 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 #c{position:fixed;inset:0;z-index:0;display:block;cursor:grab}#c.grab{cursor:grabbing}#c.point{cursor:pointer}
 .vignette{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(circle at 50% 46%,transparent 42%,rgba(4,6,12,.5) 80%,rgba(4,6,12,.93) 100%)}
 #labels{position:fixed;inset:0;z-index:2;pointer-events:none}
-.lab{position:absolute;transform:translate(-50%,-130%);font-size:12px;font-weight:600;letter-spacing:1.5px;color:#eaf6ff;white-space:nowrap;padding:2px 7px;background:rgba(4,8,16,.55);border:1px solid rgba(39,224,255,.18);border-radius:2px;text-shadow:0 0 10px rgba(39,224,255,.9),0 1px 2px rgba(0,0,0,.95);transition:opacity .15s}
+.lab{position:absolute;transform:translate(-50%,-130%);font-size:12px;font-weight:600;letter-spacing:1.5px;color:#eaf6ff;white-space:nowrap;padding:2px 7px;background:rgba(4,8,16,.55);border:1px solid rgba(39,224,255,.18);border-radius:2px;text-shadow:0 0 10px rgba(39,224,255,.9),0 1px 2px rgba(0,0,0,.95);transition:opacity .15s,border-color .15s;pointer-events:auto;cursor:pointer}
+.lab:hover{border-color:rgba(180,107,255,.7)}
+.lab.dim{opacity:.25}
+.focus{top:84px;left:50%;transform:translateX(-50%);border:1px solid rgba(180,107,255,.55);background:rgba(180,107,255,.10);color:#dcc4ff;padding:6px 14px 6px 18px;font-size:10.5px;letter-spacing:2px;border-radius:2px;display:inline-flex;align-items:center;gap:10px;backdrop-filter:blur(6px)}
+.focus[hidden]{display:none}
+.focus b{color:#fff;font-weight:600}
+.focus .x{cursor:pointer;color:#dcc4ff;padding:0 4px;font-size:13px;line-height:1;opacity:.75}.focus .x:hover{opacity:1;color:#fff}
+.density{bottom:240px;right:44px;text-align:right;color:var(--dim);font-size:9.5px;letter-spacing:2px}
+.density .lbl{margin-bottom:6px;text-transform:uppercase}.density .lbl b{color:#cfe8ff;font-weight:500;margin-left:6px;letter-spacing:1px}
+.density input[type=range]{width:160px;accent-color:var(--accent);background:transparent}
 .lab .pin{display:block;width:5px;height:5px;border-radius:50%;background:#bfe9ff;box-shadow:0 0 8px #27e0ff;margin:4px auto 0}
 .corner{position:fixed;z-index:3;width:34px;height:34px;border:1px solid rgba(39,224,255,.32);pointer-events:none}
 .tl{top:18px;left:18px;border-right:0;border-bottom:0}.tr{top:18px;right:18px;border-left:0;border-bottom:0}.bl{bottom:18px;left:18px;border-right:0;border-top:0}.br{bottom:18px;right:18px;border-left:0;border-top:0}
@@ -46,7 +55,9 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
 <div class="hud title"><h1>OR<b>B</b>IS</h1><div class="sub">Global Situation Monitor</div><div class="live"><span class="dot"></span> <span id="feed">SNAPSHOT</span></div><div class="clk">現在 <span id="now">--:--:--</span><br>最終更新 <span id="upd">&mdash;</span></div></div>
 <div class="hud badge" id="badge">報道集約スナップショット · 2026-05-30</div>
+<div class="hud focus" id="focus" hidden>FOCUS <b id="focusName">-</b><span class="x" id="focusX">×</span></div>
 <div class="hud filters" id="filters"><div class="lbl">Event Layers</div></div>
+<div class="hud density" id="density"><div class="lbl">Density · Min Sources<b id="dval">0</b></div><input type="range" id="dslider" min="0" max="50" value="0" step="1"></div>
 <div class="hud panel"><div class="row"><button class="ctrlbtn" id="spin">自動回転 ON</button><button class="ctrlbtn" id="grid">グリッド</button></div><div class="hint">ドラッグで回転 / スクロールでズーム / ラインにカーソルで要約・クリックで詳細</div></div>
 <div class="hud readout empty" id="readout"><div class="k">Selected Vector</div><div class="route"><span id="rfrom">-</span> <span class="arrow">&rarr;</span> <span id="rto">-</span></div><div class="desc" id="rdesc">光のラインにカーソルで要約、クリックで詳細を表示します。</div><div class="meta"><div>SOURCES<b id="rsrc">-</b></div><div>TYPE<b id="rtype">-</b></div><div>INTENSITY<b id="rint">-</b></div></div></div>
 <div id="tip"></div>
@@ -94,7 +105,9 @@ function build(data){
  arcGroup.clear();arcs=[];pickMeshes=[];nodes=[];labelBox.innerHTML='';
  const labelMap={};
  function addLabel(lat,lng,name){const k=lat.toFixed(1)+','+lng.toFixed(1);if(labelMap[k])return;labelMap[k]=1;
-  const loc=v3(lat,lng,R*1.012);const el=document.createElement('div');el.className='lab';el.innerHTML=name+'<span class="pin"></span>';labelBox.appendChild(el);nodes.push({loc,el});}
+  const loc=v3(lat,lng,R*1.012);const el=document.createElement('div');el.className='lab';el.innerHTML=name+'<span class="pin"></span>';
+  el.onclick=ev=>{ev.stopPropagation();setFocus(name);};
+  labelBox.appendChild(el);nodes.push({loc,el,name});}
  [...TRADE_LANES,...data].forEach(o=>{
   const _ks=(o.fromName||'')+'|'+(o.toName||'')+'|'+(o.type||'');let _kh=0;for(let _ki=0;_ki<_ks.length;_ki++)_kh=(_kh*31+_ks.charCodeAt(_ki))|0;
   const lift=((_kh>>>0)%9)*0.014;
@@ -112,13 +125,40 @@ function build(data){
  });
  const npg=new THREE.BufferGeometry();npg.setAttribute('position',new THREE.Float32BufferAttribute(nodes.flatMap(n=>[n.loc.x,n.loc.y,n.loc.z]),3));
  arcGroup.add(new THREE.Points(npg,new THREE.PointsMaterial({map:GLOW,color:0xcdefff,size:9,sizeAttenuation:false,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false})));
- buildFilters();
+ buildFilters();hoverArc=null;
+ if(typeof dslider!=='undefined'){const mx=arcs.reduce((m,a)=>Math.max(m,a.sources||0),0)||50;dslider.max=Math.max(10,mx);if(densityMin>dslider.max){densityMin=0;dslider.value=0;dval.textContent=0;}}
+ if(typeof applyVisibility==='function')applyVisibility();
 }
-const active={conflict:true,tension:true,coop:true,aid:true};
+const active={conflict:true,tension:true,coop:true,aid:true,trade:true};
+let hoverArc=null,focusCountry=null,densityMin=0;
+const DIM={halo:0.04,core:0.30,head:0.40},HOT={halo:0.50,core:1.0,head:1.0};
+function applyVisibility(){
+ const focusSet=new Set();
+ if(focusCountry){arcs.forEach(a=>{if(a.fromName===focusCountry||a.toName===focusCountry){focusSet.add(a.fromName);focusSet.add(a.toName);}});}
+ arcs.forEach(a=>{
+  const typeOk=active[a.type]!==false;
+  const srcOk=(a.sources||0)>=densityMin;
+  const focusOk=!focusCountry||a.fromName===focusCountry||a.toName===focusCountry;
+  const vis=typeOk&&srcOk&&focusOk;
+  a.halo.visible=a.core.visible=a.head.visible=vis;
+  if(!vis)return;
+  const hot=(a===hoverArc);
+  a.halo.material.opacity=hot?HOT.halo:DIM.halo;
+  a.core.material.opacity=hot?HOT.core:DIM.core;
+  a.head.material.opacity=hot?HOT.head:DIM.head;
+ });
+ nodes.forEach(n=>{if(!n.el)return;n.el.classList.toggle('dim',!!focusCountry&&!focusSet.has(n.name));});
+}
+const focusEl=document.getElementById('focus'),focusNameEl=document.getElementById('focusName');
+function setFocus(name){focusCountry=(focusCountry===name)?null:name;if(focusCountry){focusNameEl.textContent=focusCountry;focusEl.hidden=false;}else focusEl.hidden=true;applyVisibility();}
+function clearFocus(){if(!focusCountry)return;focusCountry=null;focusEl.hidden=true;applyVisibility();}
+document.getElementById('focusX').onclick=ev=>{ev.stopPropagation();clearFocus();};
+const dslider=document.getElementById('dslider'),dval=document.getElementById('dval');
+dslider.oninput=e=>{densityMin=+e.target.value;dval.textContent=densityMin;applyVisibility();};
 function buildFilters(){const fbox=document.getElementById('filters');fbox.innerHTML='<div class="lbl">Event Layers</div>';
  Object.entries(TYPE).forEach(([k,v])=>{const n=arcs.filter(a=>a.type===k).length;const el=document.createElement('button');el.className='chip'+(active[k]?'':' off');
   el.innerHTML='<span class="sw" style="background:'+v.hex+';box-shadow:0 0 8px '+v.hex+'"></span>'+v.jp+'<span class="n">'+n+'</span>';
-  el.onclick=()=>{active[k]=!active[k];el.classList.toggle('off',!active[k]);arcs.forEach(a=>{if(a.type===k)a.core.visible=a.halo.visible=a.head.visible=active[k];});};fbox.appendChild(el);});}
+  el.onclick=()=>{active[k]=!active[k];el.classList.toggle('off',!active[k]);applyVisibility();};fbox.appendChild(el);});}
 const ro=document.getElementById('readout'),tip=document.getElementById('tip');
 function select(r){ro.classList.remove('empty');rfrom.textContent=r.fromName;rto.textContent=r.toName;rdesc.textContent=r.detail;rsrc.textContent=r.sources;rtype.textContent=r.tyo.jp;rint.textContent=r.intensity+'/10';}
 function showTip(r,x,y){tip.style.display='block';tip.innerHTML='<div class="t">'+r.fromName+' &rarr; '+r.toName+'</div><span class="tag" style="background:'+r.tyo.hex+'22;color:'+r.tyo.hex+';border:1px solid '+r.tyo.hex+'">'+r.tyo.jp+' · 強度 '+r.intensity+'/10</span><div>'+r.summary+'</div><div class="s">報道ソース数 '+r.sources+' · クリックで詳細</div>';
@@ -127,8 +167,10 @@ let drag=false,px=0,py=0,moved=0,rx=0,ry=0,autoR=true;const ray=new THREE.Raycas
 cv.addEventListener('pointerdown',e=>{drag=true;moved=0;px=e.clientX;py=e.clientY;cv.classList.add('grab');});
 addEventListener('pointermove',e=>{if(drag){const dx=e.clientX-px,dy=e.clientY-py;px=e.clientX;py=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);ry+=dx*0.005;rx+=dy*0.005;rx=Math.max(-1.2,Math.min(1.2,rx));return;}
  mouse.set((e.clientX/innerWidth)*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(mouse,cam);const hit=ray.intersectObjects(pickMeshes.filter(m=>m.visible));
- if(hit.length){showTip(hit[0].object.userData,e.clientX,e.clientY);cv.classList.add('point');}else{tip.style.display='none';cv.classList.remove('point');}});
-addEventListener('pointerup',e=>{if(drag&&moved<5){mouse.set((e.clientX/innerWidth)*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(mouse,cam);const hit=ray.intersectObjects(pickMeshes.filter(m=>m.visible));if(hit.length)select(hit[0].object.userData);}drag=false;cv.classList.remove('grab');});
+ const newHover=hit.length?hit[0].object.userData:null;
+ if(hit.length){showTip(hit[0].object.userData,e.clientX,e.clientY);cv.classList.add('point');}else{tip.style.display='none';cv.classList.remove('point');}
+ if(newHover!==hoverArc){hoverArc=newHover;applyVisibility();}});
+addEventListener('pointerup',e=>{if(drag&&moved<5){mouse.set((e.clientX/innerWidth)*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(mouse,cam);const hit=ray.intersectObjects(pickMeshes.filter(m=>m.visible));if(hit.length){select(hit[0].object.userData);}else if(focusCountry){clearFocus();}}drag=false;cv.classList.remove('grab');});
 cv.addEventListener('wheel',e=>{e.preventDefault();cam.position.z=Math.max(150,Math.min(620,cam.position.z+e.deltaY*0.25));},{passive:false});
 document.getElementById('spin').onclick=e=>{autoR=!autoR;e.target.textContent='自動回転 '+(autoR?'ON':'OFF');};
 document.getElementById('grid').onclick=()=>{grat.visible=!grat.visible;};
