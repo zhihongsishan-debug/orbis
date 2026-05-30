@@ -1,19 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ORBIS ingest v3 — GDELT 2.0 Events を「直近2時間 (15分×8枚)」分まとめて集約し、
-国コード単位に正規化して orbis.html が読む events.json を生成する。
-
-v3 の変更:
-- 単発フィードではなく直近2時間ぶんをローリング集約 (8枚×15分)
-- MIN_SOURCES を 3 に緩和 (15分窓だと閾値5本は厳しすぎる)
-- 取得できた枚数をログ出力 ("集約対象ファイル: X/8 枚")
-
-使い方:
-    pip install requests
-    python ingest.py            # 1回取得
-    python ingest.py --loop     # 15分ごとに更新し続ける
-    python -m http.server 8000  # 同フォルダを配信 → http://localhost:8000/orbis.html
+ORBIS ingest v4 — GDELT 2.0 Events を直近2時間(15分×8枚)ぶんローリング集約。
+v4の変更:
+- 行単位のしきい値を撤去 (NumSources>=N → 全行集計に)
+- 集約後 (国A,国B,type) ごとの合計ソース数で MIN_PAIR_SOURCES によりフィルタ
+- 診断カウンタを出力 ("行数: 全X / 両国コードあり Y / 両方リスト内 Z / A≠B W / 集約ペア P")
 """
 import io, csv, json, time, zipfile, argparse, sys, math, re
 from collections import defaultdict
@@ -33,9 +25,9 @@ ROOTCODE, QUADCLASS = 28, 29
 NUMSOURCES = 32
 SRCURL = 60
 
-MIN_SOURCES = 3
+MIN_PAIR_SOURCES = 3   # 集約後の (国A,国B,type) 合計ソース数のしきい値
 TOP_N = 60
-WINDOW = 8  # 直近 WINDOW × 15分 = 2時間
+WINDOW = 8             # 直近 WINDOW × 15分 = 2時間
 
 # CAMEO 国コード -> [和名, 首都lat, 首都lng]
 CC = {
@@ -93,8 +85,8 @@ def export_url(dt):
 def gdelt_label(dt):
     return dt.strftime("%Y-%m-%d %H:%M UTC")
 
-def ingest_one(url, agg):
-    """1枚を取得して agg に追加集計。成功すれば True。"""
+def ingest_one(url, agg, stats):
+    """1枚をダウンロードして agg/stats に追加集計。成功時 True。"""
     try:
         resp = requests.get(url, timeout=60)
         if resp.status_code != 200:
@@ -108,11 +100,16 @@ def ingest_one(url, agg):
     rows = csv.reader(io.StringIO(data), delimiter="\t")
     for r in rows:
         if len(r) < 61: continue
+        stats["total"] += 1
         a, b = r[A1CC].strip(), r[A2CC].strip()
-        if a not in CC or b not in CC or a == b: continue
+        if not a or not b: continue
+        stats["both_cc"] += 1
+        if a not in CC or b not in CC: continue
+        stats["both_in_list"] += 1
+        if a == b: continue
+        stats["neq"] += 1
         try: ns = int(r[NUMSOURCES] or 0)
         except ValueError: continue
-        if ns < MIN_SOURCES: continue
         try: qc = int(r[QUADCLASS] or 0)
         except ValueError: continue
         typ = QUAD.get(qc)
@@ -130,18 +127,24 @@ def fetch_events():
     if latest_ts is None:
         raise RuntimeError("could not parse timestamp from latest URL")
     agg = defaultdict(lambda: {"sources":0,"roots":defaultdict(int),"url":""})
+    stats = {"total":0, "both_cc":0, "both_in_list":0, "neq":0}
     ok = 0
     for i in range(WINDOW):
         dt = latest_ts - timedelta(minutes=15 * i)
-        if ingest_one(export_url(dt), agg):
+        if ingest_one(export_url(dt), agg, stats):
             ok += 1
     print(f"集約対象ファイル: {ok}/{WINDOW} 枚")
+    print(f"行数: 全{stats['total']} / 両国コードあり {stats['both_cc']} / "
+          f"両方リスト内 {stats['both_in_list']} / A≠B {stats['neq']} / 集約ペア {len(agg)}")
+
     out = []
     for (a, b, typ), v in agg.items():
+        ns = v["sources"]
+        if ns < MIN_PAIR_SOURCES:
+            continue
         an, bn = CC[a][0], CC[b][0]
         top_root = max(v["roots"], key=v["roots"].get)
         rd = ROOT.get(top_root, "事象")
-        ns = v["sources"]
         intensity = max(1, min(10, round(math.log10(ns + 1) * 4) + (2 if typ == "conflict" else 0)))
         out.append({
             "fromName": an, "toName": bn, "type": typ, "intensity": intensity,
