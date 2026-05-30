@@ -34,6 +34,15 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 .dossier .row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 8px;font-size:11.5px;cursor:pointer;border-radius:2px;transition:background .15s,color .15s;color:#cfe0ef}
 .dossier .row:hover{background:rgba(39,224,255,.10);color:#fff}
 .dossier .row .n{color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10.5px;flex:0 0 auto}
+.src{color:var(--accent);text-decoration:none;font-size:10px;letter-spacing:1px;padding:0 4px;opacity:.72;flex:0 0 auto;white-space:nowrap}
+.src:hover{opacity:1;text-decoration:underline}
+.dossier .foot{margin-top:14px;padding-top:10px;border-top:1px dashed rgba(120,140,170,.18);color:#7d8aa3;font-size:10px;letter-spacing:.5px;line-height:1.55}
+.dossier .foot b{color:#cfa8ff;font-weight:600;letter-spacing:1px}
+.readout .src{display:inline-block;margin-top:10px}
+.readout .src[hidden]{display:none}
+.notes{bottom:170px;left:40px;max-width:300px;color:#7588a0;font-size:10px;line-height:1.6;letter-spacing:.4px;border-left:2px solid rgba(180,107,255,.45);padding:6px 0 6px 10px}
+.notes b{color:#cfa8ff;font-weight:600;letter-spacing:1px;display:block;font-size:9px;margin-bottom:3px;text-transform:uppercase}
+@media(max-width:760px){.notes{display:none}}
 .dossier .empty{color:var(--dim);font-size:10.5px;padding:10px 4px;line-height:1.5}
 @media(max-width:760px){.dossier{display:none}}
 .lab .pin{display:block;width:5px;height:5px;border-radius:50%;background:#bfe9ff;box-shadow:0 0 8px #27e0ff;margin:4px auto 0}
@@ -74,7 +83,8 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 <div class="hud filters" id="filters"><div class="lbl">Event Layers</div></div>
 <div class="hud density" id="density"><div class="lbl">Density · Min Sources<b id="dval">0</b></div><input type="range" id="dslider" min="0" max="50" value="0" step="1"></div>
 <div class="hud panel"><div class="row"><button class="ctrlbtn" id="spin">自動回転 ON</button><button class="ctrlbtn" id="grid">グリッド</button></div><div class="hint">ドラッグで回転 / スクロールでズーム / ラインにカーソルで要約・クリックで詳細</div></div>
-<div class="hud readout empty" id="readout"><div class="k">Selected Vector</div><div class="route"><span id="rfrom">-</span> <span class="arrow">&rarr;</span> <span id="rto">-</span></div><div class="desc" id="rdesc">光のラインにカーソルで要約、クリックで詳細を表示します。</div><div class="meta"><div>SOURCES<b id="rsrc">-</b></div><div>TYPE<b id="rtype">-</b></div><div>INTENSITY<b id="rint">-</b></div></div></div>
+<div class="hud readout empty" id="readout"><div class="k">Selected Vector</div><div class="route"><span id="rfrom">-</span> <span class="arrow">&rarr;</span> <span id="rto">-</span></div><div class="desc" id="rdesc">光のラインにカーソルで要約、クリックで詳細を表示します。</div><div class="meta"><div>SOURCES<b id="rsrc">-</b></div><div>TYPE<b id="rtype">-</b></div><div>INTENSITY<b id="rint">-</b></div></div><a id="rsrcLink" class="src" target="_blank" rel="noopener" hidden>出典 ↗</a></div>
+<div class="hud notes"><b>考えるヒント</b>誰が／どこで／なぜ — そして「誰の視点で報じているか」を意識して読む。<br>報道ソース数は<b style="display:inline">注目度</b>の指標で、事実性とは別。必ず一次ソース・複数視点で確認を。</div>
 <div id="tip"></div>
 <script>
 const SNAP=[{"fromName":"ロシア","toName":"ウクライナ","type":"conflict","intensity":9,"summary":"前線で地上戦と長距離攻撃が継続","detail":"複数戦線での交戦が継続。2026年5月の戦勝記念日前後に一時的停戦が宣言されたが限定的で、戦闘は続いていると報じられている。","sLat":55.75,"sLng":37.6,"eLat":50.45,"eLng":30.52},{"fromName":"米国","toName":"ウクライナ","type":"aid","intensity":7,"summary":"軍事・財政支援（規模は流動的）","detail":"米国はウクライナ支援を継続するが、支援規模や条件を巡る政治的議論が続いていると報じられている。","sLat":38.9,"sLng":-77,"eLat":50.45,"eLng":30.52},{"fromName":"ドイツ","toName":"ウクライナ","type":"aid","intensity":6,"summary":"武器・防空システムを供与","detail":"ドイツを含むEU諸国がウクライナへ防空・財政支援を継続していると報じられている。","sLat":52.52,"sLng":13.41,"eLat":50.45,"eLng":30.52},{"fromName":"米国","toName":"イラン","type":"tension","intensity":8,"summary":"2月の対イラン共同攻撃後の緊迫した対峙","detail":"2026年2月の米・イスラエルによるイラン施設攻撃後、大規模戦闘は一旦停止しジュネーブで間接協議が行われる緊迫した「グレーゾーン」状態と報じられている。","sLat":38.9,"sLng":-77,"eLat":35.69,"eLng":51.39},{"fromName":"イスラエル","toName":"イラン","type":"tension","intensity":8,"summary":"直接・代理を通じた相互攻撃","detail":"イスラエルとイランの間で直接・代理勢力を介した攻撃の応酬があり、軍事的緊張が極めて高いと報じられている。","sLat":31.78,"sLng":35.22,"eLat":35.69,"eLng":51.39},{"fromName":"イスラエル","toName":"ガザ","type":"conflict","intensity":9,"summary":"軍事作戦と深刻な人道危機","detail":"イスラエル軍のガザでの軍事作戦と、深刻な人道状況が並行して報じられている。","sLat":31.78,"sLng":35.22,"eLat":31.5,"eLng":34.47},{"fromName":"イスラエル","toName":"レバノン","type":"conflict","intensity":7,"summary":"ヒズボラを標的とした越境空爆","detail":"イスラエルがレバノン領内のヒズボラ関連目標へ空爆を行い、停戦枠組みが不安定化していると報じられている。","sLat":31.78,"sLng":35.22,"eLat":33.89,"eLng":35.5},{"fromName":"イエメン","toName":"イスラエル","type":"conflict","intensity":6,"summary":"フーシ派による越境攻撃と海上脅威","detail":"イエメンのフーシ派がイスラエルや国際商船へ攻撃を行い、海上交通を脅かしていると報じられている。","sLat":15.37,"sLng":44.19,"eLat":31.78,"eLng":35.22},{"fromName":"スーダン","toName":"ダルフール","type":"conflict","intensity":8,"summary":"国軍とRSFの内戦・大規模避難","detail":"スーダンで国軍と準軍事組織RSFの戦闘が続き、世界最大級の避難民・飢餓危機が報じられている（国内紛争）。","sLat":15.5,"sLng":32.56,"eLat":13.6,"eLng":25.3},{"fromName":"中国","toName":"台湾","type":"tension","intensity":7,"summary":"軍用機・艦艇による圧力が常態化","detail":"中国軍機の防空識別圏進入や海軍活動が頻発し、台湾周辺の軍事的圧力が高い状態と報じられている。","sLat":39.9,"sLng":116.4,"eLat":25.03,"eLng":121.56},{"fromName":"北朝鮮","toName":"韓国","type":"tension","intensity":6,"summary":"ミサイル発射と境界での威嚇","detail":"北朝鮮の弾道ミサイル発射や軍事境界線付近での挑発的行動が報じられている。","sLat":39.03,"sLng":125.75,"eLat":37.57,"eLng":126.98},{"fromName":"インド","toName":"パキスタン","type":"tension","intensity":5,"summary":"カシミールを巡る散発的衝突","detail":"インド・パキスタン間でカシミールを巡る散発的衝突と非難の応酬が報じられている。","sLat":28.61,"sLng":77.21,"eLat":33.69,"eLng":73.06},{"fromName":"パキスタン","toName":"アフガニスタン","type":"tension","intensity":5,"summary":"国境地帯での越境攻撃","detail":"パキスタンとアフガニスタン（タリバン政権）の国境地帯で越境攻撃・衝突が報じられている。","sLat":33.69,"sLng":73.06,"eLat":34.53,"eLng":69.17},{"fromName":"米国","toName":"ベネズエラ","type":"tension","intensity":7,"summary":"軍事的圧力と体制転換シナリオ","detail":"米国がベネズエラ周辺で軍事的圧力を強め、体制転換を巡る緊張が高まっていると報じられている。","sLat":38.9,"sLng":-77,"eLat":10.48,"eLng":-66.9},{"fromName":"米国","toName":"中国","type":"tension","intensity":6,"summary":"関税・先端半導体規制を巡る摩擦","detail":"米中間で関税や先端半導体の輸出規制を巡る経済・技術摩擦が続いていると報じられている。","sLat":38.9,"sLng":-77,"eLat":39.9,"eLng":116.4},{"fromName":"中国","toName":"ロシア","type":"coop","intensity":6,"summary":"エネルギー・外交での戦略的接近","detail":"中国とロシアがエネルギー・外交面で戦略的に接近していると報じられている。","sLat":39.9,"sLng":116.4,"eLat":55.75,"eLng":37.6},{"fromName":"米国","toName":"日本","type":"coop","intensity":6,"summary":"同盟強化と共同訓練","detail":"日米同盟の下で共同訓練や安全保障協力が強化されていると報じられている。","sLat":38.9,"sLng":-77,"eLat":35.68,"eLng":139.69},{"fromName":"トルコ","toName":"シリア","type":"tension","intensity":5,"summary":"シリア北部での越境作戦","detail":"トルコがシリア北部の武装勢力に対し越境的な軍事作戦を行っていると報じられている。","sLat":39.93,"sLng":32.86,"eLat":33.51,"eLng":36.29}];
@@ -208,21 +218,26 @@ function renderDossier(name){
  const grp={},partners=new Set();let totalSrc=0;
  arcs.forEach(a=>{if(a.fromName!==name&&a.toName!==name)return;
   const p=(a.fromName===name)?a.toName:a.fromName;partners.add(p);totalSrc+=(a.sources||0);
-  if(!grp[a.type])grp[a.type]={};grp[a.type][p]=(grp[a.type][p]||0)+(a.sources||0);});
+  if(!grp[a.type])grp[a.type]={};if(!grp[a.type][p])grp[a.type][p]={n:0,url:null};
+  grp[a.type][p].n+=(a.sources||0);if(!grp[a.type][p].url&&a.url)grp[a.type][p].url=a.url;});
  dosName.textContent=name;
  dosSub.innerHTML='相手国 <b>'+partners.size+'</b> · 累計ソース <b>'+totalSrc+'</b> (直近2h集約)';
  const out=[];
  DOSSIER_ORDER.forEach(t=>{if(!grp[t])return;const ty=TYPE[t];if(!ty)return;
-  const rows=Object.entries(grp[t]).sort((a,b)=>b[1]-a[1]);if(!rows.length)return;
+  const rows=Object.entries(grp[t]).sort((a,b)=>b[1].n-a[1].n);if(!rows.length)return;
   const sec=document.createElement('div');sec.className='grp';
   sec.innerHTML='<div class="gh"><span class="sw" style="background:'+ty.hex+';box-shadow:0 0 6px '+ty.hex+'"></span>'+ty.jp+'</div>';
-  rows.forEach(([p,n])=>{const r=document.createElement('div');r.className='row';
-   r.innerHTML='<span>'+p+'</span><span class="n">'+(n?n:'—')+'</span>';
+  rows.forEach(([p,info])=>{const r=document.createElement('div');r.className='row';
+   const ns=document.createElement('span');ns.textContent=p;
+   const num=document.createElement('span');num.className='n';num.textContent=info.n?info.n:'—';
+   r.appendChild(ns);r.appendChild(num);
+   if(info.url&&t!=='trade'){const a=document.createElement('a');a.className='src';a.href=info.url;a.target='_blank';a.rel='noopener';a.textContent='出典 ↗';a.title=info.url;a.onclick=ev=>ev.stopPropagation();r.appendChild(a);}
    r.onclick=ev=>{ev.stopPropagation();setFocus(p);};sec.appendChild(r);});
   out.push(sec);});
  dosBody.innerHTML='';
  if(!out.length){const e=document.createElement('div');e.className='empty';e.textContent='直近2hでこの国がアクティブな関係はありません。貿易レーンや過去データの蓄積をお待ちください。';dosBody.appendChild(e);}
- else out.forEach(s=>dosBody.appendChild(s));}
+ else out.forEach(s=>dosBody.appendChild(s));
+ const foot=document.createElement('div');foot.className='foot';foot.innerHTML='<b>検証ヒント</b>各「出典 ↗」は代表ソース1件のみ。報道ソース数は<b style="display:inline">注目度</b>であって事実性とは別。複数視点・一次資料で確認を。';dosBody.appendChild(foot);}
 function setFocus(name){focusCountry=(focusCountry===name)?null:name;
  if(focusCountry){focusNameEl.textContent=focusCountry;focusEl.hidden=false;renderDossier(focusCountry);dosEl.hidden=false;}
  else{focusEl.hidden=true;dosEl.hidden=true;}
@@ -236,7 +251,9 @@ function buildFilters(){const fbox=document.getElementById('filters');fbox.inner
   el.innerHTML='<span class="sw" style="background:'+v.hex+';box-shadow:0 0 8px '+v.hex+'"></span>'+v.jp+'<span class="n">'+n+'</span>';
   el.onclick=()=>{active[k]=!active[k];el.classList.toggle('off',!active[k]);applyVisibility();};fbox.appendChild(el);});}
 const ro=document.getElementById('readout'),tip=document.getElementById('tip');
-function select(r){ro.classList.remove('empty');rfrom.textContent=r.fromName;rto.textContent=r.toName;rdesc.textContent=r.detail;rsrc.textContent=r.sources;rtype.textContent=r.tyo.jp;rint.textContent=r.intensity+'/10';}
+const rsrcLink=document.getElementById('rsrcLink');
+function select(r){ro.classList.remove('empty');rfrom.textContent=r.fromName;rto.textContent=r.toName;rdesc.textContent=r.detail;rsrc.textContent=r.sources;rtype.textContent=r.tyo.jp;rint.textContent=r.intensity+'/10';
+ if(r.url&&r.type!=='trade'){rsrcLink.href=r.url;rsrcLink.title=r.url;rsrcLink.hidden=false;}else{rsrcLink.hidden=true;}}
 function showTip(r,x,y){tip.style.display='block';tip.innerHTML='<div class="t">'+r.fromName+' &rarr; '+r.toName+'</div><span class="tag" style="background:'+r.tyo.hex+'22;color:'+r.tyo.hex+';border:1px solid '+r.tyo.hex+'">'+r.tyo.jp+' · 強度 '+r.intensity+'/10</span><div>'+r.summary+'</div><div class="s">報道ソース数 '+r.sources+' · クリックで詳細</div>';
  const w=tip.offsetWidth,h=tip.offsetHeight;let px=x+16,py=y+16;if(px+w>innerWidth-10)px=x-w-16;if(py+h>innerHeight-10)py=y-h-16;tip.style.left=px+'px';tip.style.top=py+'px';}
 let drag=false,px=0,py=0,moved=0,rx=0,ry=0,autoR=true;const ray=new THREE.Raycaster();const mouse=new THREE.Vector2();

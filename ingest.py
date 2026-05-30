@@ -152,6 +152,7 @@ def fetch_events():
             "detail": f"{an} が {bn} に対して主に『{rd}』に分類される行動。直近2時間の報道ソース合計 {ns} 件。例: {v['url']}",
             "sLat": CC[a][1], "sLng": CC[a][2], "eLat": CC[b][1], "eLng": CC[b][2],
             "sources": ns,
+            "url": v["url"],
         })
     out.sort(key=lambda x: x["sources"], reverse=True)
     return out[:TOP_N], gdelt_label(latest_ts)
