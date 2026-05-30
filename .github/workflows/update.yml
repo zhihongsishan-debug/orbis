@@ -46,6 +46,7 @@ jobs:
           mkdir -p site
           cp orbis.html site/index.html
           if [ -f events.json ]; then cp events.json site/events.json; else echo "no events.json"; fi
+          if [ -f countries.json ]; then cp countries.json site/countries.json; else echo "no countries.json"; fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
