@@ -86,16 +86,16 @@
 - 操作: ドラッグ回転(globe group rotation)、ホイールでカメラdolly、自動回転トグル、グリッドトグル。
 - 当たり判定: アークの core/halo メッシュを raycast。ホバーでツールチップ、クリックで右下readout。
 - 国名ラベル: HTML div を毎フレーム `project()` で配置。裏面は法線×視線のdotでフェード。
-- データ取り込み: 起動時と2分ごとに `fetch('./events.json',{cache:'no-store'})`。`{generated,gdelt,events}` でも素の配列でも可。失敗時は内蔵 `SNAP` 配列。
+- データ取り込み: 起動時と2分ごとに `fetch('./events.json',{cache:'no-store'})`。`{generated,gdelt,events}` でも素の配列でも可。**ライブが events 空 or 取得失敗のときは、既に1度でもライブ表示に成功していれば前回のシーンを保持**（badgeに「直近2hでアーク0本（前回データ表示中）」を出す）。一度もライブが入っていなければ内蔵 `SNAP` 配列にフォールバック。
 - 各イベントの形: `{fromName,toName,type,intensity(1-10),summary,detail,sLat,sLng,eLat,eLng,sources}`。
 - HUD: 現在時刻(毎秒)、最終更新(generated / GDELT data time)、種別フィルタ、凡例、出典バッジ。
 
 ### ingest.py
-- 取得: `http://data.gdeltproject.org/gdelt2/lastupdate.txt` から `*.export.CSV.zip` のURL → DL → unzip → タブ区切りCSV。
+- 取得: `http://data.gdeltproject.org/gdeltv2/lastupdate.txt` から最新の `*.export.CSV.zip` URL を得て、その時刻を起点に **15分刻みで直近8枚（=2時間）をローリング取得**。各枚は `http://data.gdeltproject.org/gdeltv2/YYYYMMDDHHMMSS.export.CSV.zip`。取得失敗（404等）は skip、ログに `集約対象ファイル: X/8 枚` を出力。
 - GDELT 2.0 列index: Actor1CountryCode=7, Actor2CountryCode=17, EventRootCode=28, QuadClass=29, NumSources=32, Actor1Geo_Lat/Long=40/41, Actor2Geo_Lat/Long=48/49, ActionGeo_Lat/Long=56/57, SOURCEURL=60。
-- 正規化: `CC`(CAMEO国コード→[和名,lat,lng]) に両国があり国A≠国B、`NumSources>=5` のみ採用。`QuadClass`→type(1 coop/2 aid/3 tension/4 conflict)。
-- 集約: `(国A,国B,type)` ごとにソース数合算、最頻 `EventRootCode` を要約に。強度 `= clamp(round(log10(sources+1)*4) + (conflictなら+2), 1, 10)`。
-- 出力: `events.json = {"generated": ローカル時刻, "gdelt": データ時刻(URLの14桁→UTC), "events": 上位60本}`。
+- 正規化: `CC`(CAMEO国コード→[和名,lat,lng]) に両国があり国A≠国B、`NumSources>=3` のみ採用。`QuadClass`→type(1 coop/2 aid/3 tension/4 conflict)。
+- 集約: 8枚を跨いで `(国A,国B,type)` ごとにソース数合算、最頻 `EventRootCode` を要約に。強度 `= clamp(round(log10(sources+1)*4) + (conflictなら+2), 1, 10)`。
+- 出力: `events.json = {"generated": ローカル時刻, "gdelt": 最新枚のデータ時刻(URLの14桁→UTC), "events": 上位60本}`。
 - `--loop` で15分sleepループ。
 
 ### borders.json（国境の作り方・再現用）

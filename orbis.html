@@ -130,11 +130,15 @@ loop();
 function fmt(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
 function tick(){document.getElementById('now').textContent=fmt(new Date());}setInterval(tick,1000);tick();
 function snapStamp(){document.getElementById('feed').textContent='SNAPSHOT';document.getElementById('badge').textContent='報道集約スナップショット · 2026-05-30';document.getElementById('upd').textContent='2026-05-30（静的スナップショット・自動更新なし）';}
-function applyFeed(d){const ev=Array.isArray(d)?d:(d&&d.events);if(!ev||!ev.length)return false;
- build(ev);document.getElementById('feed').textContent='LIVE · events.json';document.getElementById('badge').textContent='ライブフィード接続中 · events.json';
- const g=(!Array.isArray(d)&&d.generated)?d.generated:fmt(new Date());const gd=(!Array.isArray(d)&&d.gdelt)?(' / GDELT '+d.gdelt):'';
- document.getElementById('upd').textContent=g+gd;return true;}
-function loadFeed(){fetch('./events.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json();}).then(d=>{if(!applyFeed(d)){build(SNAP);snapStamp();}}).catch(()=>{build(SNAP);snapStamp();});}
+function liveStamp(d,label){document.getElementById('feed').textContent='LIVE · events.json';document.getElementById('badge').textContent=label;
+ const g=(d&&d.generated)?d.generated:fmt(new Date());const gd=(d&&d.gdelt)?(' / GDELT '+d.gdelt):'';
+ document.getElementById('upd').textContent=g+gd;}
+let liveBuilt=false;
+function applyFeed(d){const meta=Array.isArray(d)?null:d;const ev=Array.isArray(d)?d:(d&&d.events);
+ if(ev&&ev.length){build(ev);liveBuilt=true;liveStamp(meta,'ライブフィード接続中 · events.json');return 'live';}
+ if(liveBuilt){liveStamp(meta,'ライブフィード接続中 · 直近2hでアーク0本（前回データ表示中）');return 'keep';}
+ return 'empty';}
+function loadFeed(){fetch('./events.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json();}).then(d=>{if(applyFeed(d)==='empty'){build(SNAP);snapStamp();}}).catch(()=>{if(!liveBuilt){build(SNAP);snapStamp();}});}
 loadFeed();setInterval(loadFeed,120000);
 /* removed: */ if(false){
 fetch('./events.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json();}).then(d=>{
