@@ -1,0 +1,57 @@
+name: Update ORBIS feed
+
+# 15分ごと(best-effort) + 手動実行 + main への push で起動
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時実行を1本に絞る（重複デプロイ防止）
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install requests
+
+      # GDELT から最新を取得して events.json を生成。
+      # 失敗してもデプロイは続行し、orbis.html 内蔵スナップショットにフォールバックさせる。
+      - name: Generate events.json
+        run: python ingest.py || echo "ingest failed -> snapshot fallback"
+
+      - name: Assemble site
+        run: |
+          mkdir -p site
+          cp orbis.html site/index.html
+          if [ -f events.json ]; then cp events.json site/events.json; else echo "no events.json"; fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
