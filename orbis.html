@@ -96,11 +96,13 @@ function build(data){
  function addLabel(lat,lng,name){const k=lat.toFixed(1)+','+lng.toFixed(1);if(labelMap[k])return;labelMap[k]=1;
   const loc=v3(lat,lng,R*1.012);const el=document.createElement('div');el.className='lab';el.innerHTML=name+'<span class="pin"></span>';labelBox.appendChild(el);nodes.push({loc,el});}
  [...TRADE_LANES,...data].forEach(o=>{
-  const s=v3(o.sLat,o.sLng,R*1.004),e=v3(o.eLat,o.eLng,R*1.004);
-  const d=s.distanceTo(e);const mid=s.clone().add(e).multiplyScalar(0.5).normalize().multiplyScalar(R*(1+0.1+d/R*0.24));
+  const _ks=(o.fromName||'')+'|'+(o.toName||'')+'|'+(o.type||'');let _kh=0;for(let _ki=0;_ki<_ks.length;_ki++)_kh=(_kh*31+_ks.charCodeAt(_ki))|0;
+  const lift=((_kh>>>0)%9)*0.014;
+  const s=v3(o.sLat,o.sLng,R*(1.004+lift*0.5)),e=v3(o.eLat,o.eLng,R*(1.004+lift*0.5));
+  const d=s.distanceTo(e);const mid=s.clone().add(e).multiplyScalar(0.5).normalize().multiplyScalar(R*(1+0.1+d/R*0.22+lift));
   const curve=new THREE.QuadraticBezierCurve3(s,mid,e);const col=(TYPE[o.type]||TYPE.tension).c;const ty=TYPE[o.type]||TYPE.tension;
-  const halo=new THREE.Mesh(new THREE.TubeGeometry(curve,60,1.5+o.intensity*0.18,8,false),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.16,blending:THREE.AdditiveBlending,depthWrite:false}));
-  const core=new THREE.Mesh(new THREE.TubeGeometry(curve,60,0.42+o.intensity*0.05,8,false),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false}));
+  const halo=new THREE.Mesh(new THREE.TubeGeometry(curve,60,0.95+o.intensity*0.11,8,false),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.10,blending:THREE.AdditiveBlending,depthWrite:false}));
+  const core=new THREE.Mesh(new THREE.TubeGeometry(curve,60,0.28+o.intensity*0.035,8,false),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.92,blending:THREE.AdditiveBlending,depthWrite:false}));
   arcGroup.add(halo);arcGroup.add(core);
   const rec=Object.assign({},o,{curve,core,halo,tyo:ty,sources:o.sources||(3+Math.round(o.intensity*4))});
   const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW,color:col,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
