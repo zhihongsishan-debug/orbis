@@ -23,6 +23,19 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 .density{bottom:240px;right:44px;text-align:right;color:var(--dim);font-size:9.5px;letter-spacing:2px}
 .density .lbl{margin-bottom:6px;text-transform:uppercase}.density .lbl b{color:#cfe8ff;font-weight:500;margin-left:6px;letter-spacing:1px}
 .density input[type=range]{width:160px;accent-color:var(--accent);background:transparent}
+.dossier{top:50%;left:40px;transform:translateY(-50%);width:280px;max-height:64vh;background:rgba(10,14,22,.78);border:1px solid var(--line);border-radius:4px;padding:14px 16px;backdrop-filter:blur(8px);overflow-y:auto;color:var(--ink)}
+.dossier[hidden]{display:none}
+.dossier .k{font-size:9px;letter-spacing:3px;color:var(--dim);text-transform:uppercase}
+.dossier h3{font-family:'Saira Condensed',sans-serif;font-weight:700;font-size:24px;letter-spacing:1px;color:#fff;margin:4px 0 2px}
+.dossier .sub{font-size:10px;letter-spacing:2px;color:var(--dim);margin-bottom:12px}.dossier .sub b{color:#cfe8ff;font-weight:500}
+.dossier .grp{margin-top:10px}
+.dossier .gh{display:flex;align-items:center;gap:8px;font-size:9.5px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin:8px 0 4px;padding:0 4px}
+.dossier .gh .sw{width:8px;height:8px;border-radius:1px;flex:0 0 auto}
+.dossier .row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 8px;font-size:11.5px;cursor:pointer;border-radius:2px;transition:background .15s,color .15s;color:#cfe0ef}
+.dossier .row:hover{background:rgba(39,224,255,.10);color:#fff}
+.dossier .row .n{color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10.5px;flex:0 0 auto}
+.dossier .empty{color:var(--dim);font-size:10.5px;padding:10px 4px;line-height:1.5}
+@media(max-width:760px){.dossier{display:none}}
 .lab .pin{display:block;width:5px;height:5px;border-radius:50%;background:#bfe9ff;box-shadow:0 0 8px #27e0ff;margin:4px auto 0}
 .corner{position:fixed;z-index:3;width:34px;height:34px;border:1px solid rgba(39,224,255,.32);pointer-events:none}
 .tl{top:18px;left:18px;border-right:0;border-bottom:0}.tr{top:18px;right:18px;border-left:0;border-bottom:0}.bl{bottom:18px;left:18px;border-right:0;border-top:0}.br{bottom:18px;right:18px;border-left:0;border-top:0}
@@ -57,6 +70,7 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 <div class="hud title"><h1>OR<b>B</b>IS</h1><div class="sub">Global Situation Monitor</div><div class="live"><span class="dot"></span> <span id="feed">SNAPSHOT</span></div><div class="clk">現在 <span id="now">--:--:--</span><br>最終更新 <span id="upd">&mdash;</span></div></div>
 <div class="hud badge" id="badge">報道集約スナップショット · 2026-05-30</div>
 <div class="hud focus" id="focus" hidden>FOCUS <b id="focusName">-</b><span class="x" id="focusX">×</span></div>
+<div class="hud dossier" id="dossier" hidden><div class="k">Country Brief</div><h3 id="dosName">-</h3><div class="sub" id="dosSub">-</div><div id="dosBody"></div></div>
 <div class="hud filters" id="filters"><div class="lbl">Event Layers</div></div>
 <div class="hud density" id="density"><div class="lbl">Density · Min Sources<b id="dval">0</b></div><input type="range" id="dslider" min="0" max="50" value="0" step="1"></div>
 <div class="hud panel"><div class="row"><button class="ctrlbtn" id="spin">自動回転 ON</button><button class="ctrlbtn" id="grid">グリッド</button></div><div class="hint">ドラッグで回転 / スクロールでズーム / ラインにカーソルで要約・クリックで詳細</div></div>
@@ -165,6 +179,7 @@ function build(data){
  buildFilters();hoverArc=null;
  if(typeof dslider!=='undefined'){const mx=arcs.reduce((m,a)=>Math.max(m,a.sources||0),0)||50;dslider.max=Math.max(10,mx);if(densityMin>dslider.max){densityMin=0;dslider.value=0;dval.textContent=0;}}
  if(typeof applyVisibility==='function')applyVisibility();
+ if(focusCountry&&typeof renderDossier==='function')renderDossier(focusCountry);
 }
 const active={conflict:true,tension:true,coop:true,aid:true,trade:true};
 let hoverArc=null,focusCountry=null,densityMin=0;
@@ -187,8 +202,32 @@ function applyVisibility(){
  nodes.forEach(n=>{if(!n.el)return;n.el.classList.toggle('dim',!!focusCountry&&!focusSet.has(n.name));});
 }
 const focusEl=document.getElementById('focus'),focusNameEl=document.getElementById('focusName');
-function setFocus(name){focusCountry=(focusCountry===name)?null:name;if(focusCountry){focusNameEl.textContent=focusCountry;focusEl.hidden=false;}else focusEl.hidden=true;applyVisibility();}
-function clearFocus(){if(!focusCountry)return;focusCountry=null;focusEl.hidden=true;applyVisibility();}
+const dosEl=document.getElementById('dossier'),dosName=document.getElementById('dosName'),dosSub=document.getElementById('dosSub'),dosBody=document.getElementById('dosBody');
+const DOSSIER_ORDER=['conflict','tension','coop','aid','trade'];
+function renderDossier(name){
+ const grp={},partners=new Set();let totalSrc=0;
+ arcs.forEach(a=>{if(a.fromName!==name&&a.toName!==name)return;
+  const p=(a.fromName===name)?a.toName:a.fromName;partners.add(p);totalSrc+=(a.sources||0);
+  if(!grp[a.type])grp[a.type]={};grp[a.type][p]=(grp[a.type][p]||0)+(a.sources||0);});
+ dosName.textContent=name;
+ dosSub.innerHTML='相手国 <b>'+partners.size+'</b> · 累計ソース <b>'+totalSrc+'</b> (直近2h集約)';
+ const out=[];
+ DOSSIER_ORDER.forEach(t=>{if(!grp[t])return;const ty=TYPE[t];if(!ty)return;
+  const rows=Object.entries(grp[t]).sort((a,b)=>b[1]-a[1]);if(!rows.length)return;
+  const sec=document.createElement('div');sec.className='grp';
+  sec.innerHTML='<div class="gh"><span class="sw" style="background:'+ty.hex+';box-shadow:0 0 6px '+ty.hex+'"></span>'+ty.jp+'</div>';
+  rows.forEach(([p,n])=>{const r=document.createElement('div');r.className='row';
+   r.innerHTML='<span>'+p+'</span><span class="n">'+(n?n:'—')+'</span>';
+   r.onclick=ev=>{ev.stopPropagation();setFocus(p);};sec.appendChild(r);});
+  out.push(sec);});
+ dosBody.innerHTML='';
+ if(!out.length){const e=document.createElement('div');e.className='empty';e.textContent='直近2hでこの国がアクティブな関係はありません。貿易レーンや過去データの蓄積をお待ちください。';dosBody.appendChild(e);}
+ else out.forEach(s=>dosBody.appendChild(s));}
+function setFocus(name){focusCountry=(focusCountry===name)?null:name;
+ if(focusCountry){focusNameEl.textContent=focusCountry;focusEl.hidden=false;renderDossier(focusCountry);dosEl.hidden=false;}
+ else{focusEl.hidden=true;dosEl.hidden=true;}
+ applyVisibility();}
+function clearFocus(){if(!focusCountry)return;focusCountry=null;focusEl.hidden=true;dosEl.hidden=true;applyVisibility();}
 document.getElementById('focusX').onclick=ev=>{ev.stopPropagation();clearFocus();};
 const dslider=document.getElementById('dslider'),dval=document.getElementById('dval');
 dslider.oninput=e=>{densityMin=+e.target.value;dval.textContent=densityMin;applyVisibility();};
