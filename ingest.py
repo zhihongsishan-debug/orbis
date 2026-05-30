@@ -21,7 +21,7 @@ import io, csv, json, time, zipfile, argparse, sys, math
 from collections import defaultdict
 import requests
 
-LASTUPDATE = "http://data.gdeltproject.org/gdelt2/lastupdate.txt"
+LASTUPDATE = "http://data.gdeltproject.org/gdeltv2/lastupdate.txt"
 QUAD = {1: "coop", 2: "aid", 3: "tension", 4: "conflict"}
 ROOT = {"01":"声明","02":"要請","03":"協力の意向","04":"協議","05":"外交的協力","06":"物的協力",
  "07":"支援の提供","08":"譲歩","09":"調査","10":"要求","11":"非難","12":"拒否","13":"威嚇",
