@@ -161,6 +161,7 @@ def run_once():
     ev, gdelt_ts = fetch_events()
     payload = {
         "generated": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "generated_iso": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "gdelt": gdelt_ts,
         "events": ev,
     }

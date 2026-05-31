@@ -53,6 +53,9 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 .title .sub{margin-top:6px;font-size:10.5px;letter-spacing:3px;color:var(--dim);text-transform:uppercase}
 .live{display:inline-flex;align-items:center;gap:7px;margin-top:12px;font-size:10px;letter-spacing:2px;color:var(--dim)}
 .clk{margin-top:8px;font-size:9.5px;letter-spacing:1px;line-height:1.6;color:#8aa0bd}.clk span{color:#cfe8ff}
+#upd.fresh-ok{color:#7df3a0;text-shadow:0 0 6px rgba(125,243,160,.35)}
+#upd.fresh-warn{color:#ffd24d;text-shadow:0 0 6px rgba(255,210,77,.35)}
+#upd.fresh-bad{color:#ff6680;text-shadow:0 0 8px rgba(255,102,128,.45)}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--coop);box-shadow:0 0 10px var(--coop);animation:pulse 1.6s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
 .badge{top:34px;left:50%;transform:translateX(-50%);border:1px solid rgba(39,224,255,.4);background:rgba(39,224,255,.07);color:var(--accent);padding:6px 14px;font-size:10px;letter-spacing:2px;border-radius:2px}
@@ -291,10 +294,28 @@ loop();
 // try live feed (events.json from ingest.py); fall back to embedded real snapshot
 function fmt(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
 function tick(){document.getElementById('now').textContent=fmt(new Date());}setInterval(tick,1000);tick();
-function snapStamp(){document.getElementById('feed').textContent='SNAPSHOT';document.getElementById('badge').textContent='報道集約スナップショット · 2026-05-30';document.getElementById('upd').textContent='2026-05-30（静的スナップショット・自動更新なし）';}
+function snapStamp(){document.getElementById('feed').textContent='SNAPSHOT';document.getElementById('badge').textContent='報道集約スナップショット · 2026-05-30';document.getElementById('upd').textContent='2026-05-30（静的スナップショット・自動更新なし）';document.getElementById('upd').className='';lastFeed=null;}
+let lastFeed=null;
+function freshnessUpdate(){
+ const el=document.getElementById('upd');
+ if(!lastFeed||!lastFeed.generated_iso)return;
+ const t=new Date(lastFeed.generated_iso);if(isNaN(t))return;
+ const diffMin=Math.max(0,Math.round((Date.now()-t.getTime())/60000));
+ const hh=String(t.getHours()).padStart(2,'0'),mm=String(t.getMinutes()).padStart(2,'0');
+ const tz=(Intl.DateTimeFormat().resolvedOptions().timeZone||'local').replace(/^.*\//,'');
+ let lab;
+ if(diffMin<1)lab='たった今';
+ else if(diffMin<60)lab=diffMin+'分前';
+ else{const h=Math.floor(diffMin/60),m=diffMin%60;lab=h+'時間'+(m?(m+'分'):'')+'前';}
+ let cls='fresh-ok',warn='';
+ if(diffMin>90){cls='fresh-bad';warn=' · 自動更新が停止している可能性 (Actions確認)';}
+ else if(diffMin>30){cls='fresh-warn';}
+ const gdelt=lastFeed.gdelt?(' · GDELT '+lastFeed.gdelt):'';
+ el.className=cls;el.textContent=lab+' (取得 '+hh+':'+mm+' '+tz+gdelt+')'+warn;}
 function liveStamp(d,label){document.getElementById('feed').textContent='LIVE · events.json';document.getElementById('badge').textContent=label;
  const g=(d&&d.generated)?d.generated:fmt(new Date());const gd=(d&&d.gdelt)?(' / GDELT '+d.gdelt):'';
- document.getElementById('upd').textContent=g+gd;}
+ const el=document.getElementById('upd');el.textContent=g+gd;el.className='';lastFeed=d||null;freshnessUpdate();}
+setInterval(freshnessUpdate,30000);
 let liveBuilt=false;
 function applyFeed(d){const meta=Array.isArray(d)?null:d;const ev=Array.isArray(d)?d:(d&&d.events);
  if(ev&&ev.length){build(ev);liveBuilt=true;liveStamp(meta,'ライブフィード接続中 · events.json');return 'live';}
