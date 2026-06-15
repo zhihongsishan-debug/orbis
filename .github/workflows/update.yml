@@ -41,12 +41,18 @@ jobs:
       - name: Generate events.json
         run: python ingest.py || echo "ingest failed -> snapshot fallback"
 
+      - name: Generate macro.json
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python macro.py || echo "macro fetch failed -> FX panel will show 'no data'"
+
       - name: Assemble site
         run: |
           mkdir -p site
           cp orbis.html site/index.html
           if [ -f events.json ]; then cp events.json site/events.json; else echo "no events.json"; fi
           if [ -f countries.json ]; then cp countries.json site/countries.json; else echo "no countries.json"; fi
+          if [ -f macro.json ]; then cp macro.json site/macro.json; else echo "no macro.json"; fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

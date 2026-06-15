@@ -43,6 +43,29 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 .notes{bottom:170px;left:40px;max-width:300px;color:#7588a0;font-size:10px;line-height:1.6;letter-spacing:.4px;border-left:2px solid rgba(180,107,255,.45);padding:6px 0 6px 10px}
 .notes b{color:#cfa8ff;font-weight:600;letter-spacing:1px;display:block;font-size:9px;margin-bottom:3px;text-transform:uppercase}
 @media(max-width:760px){.notes{display:none}}
+.ctrlbtn.on{background:rgba(39,224,255,.12);color:var(--accent);border-color:rgba(39,224,255,.6)}
+.fxpanel{top:30px;right:44px;width:320px;max-height:80vh;background:rgba(10,14,22,.78);border:1px solid var(--line);border-radius:4px;padding:14px 16px;backdrop-filter:blur(8px);color:var(--ink);font-size:11px;overflow-y:auto}
+.fxpanel[hidden]{display:none}
+.fxpanel .lbl{font-size:9.5px;letter-spacing:3px;color:var(--dim);margin:12px 0 6px;text-transform:uppercase}
+.fxpanel .lbl:first-child{margin-top:0}
+.fxpanel table{width:100%;border-collapse:collapse;font-size:11px}
+.fxpanel th{font-size:9px;letter-spacing:1.5px;color:var(--dim);text-align:right;padding:5px 6px;border-bottom:1px solid var(--line);font-weight:500;text-transform:uppercase}
+.fxpanel th:first-child{text-align:left}
+.fxpanel td{padding:4px 6px;text-align:right;color:#cfe0ef;border-bottom:1px solid rgba(27,36,51,.5);font-family:'IBM Plex Mono',monospace}
+.fxpanel td.ccy{text-align:left;color:#fff;font-family:'Saira Condensed',sans-serif;font-weight:600;letter-spacing:1px;font-size:13px}
+.fxpanel td.na{color:#566073}
+.fxpanel td.pos{color:#7df3a0}.fxpanel td.neg{color:#ff8aa0}
+.fxpanel .diffs td:first-child{color:#fff;font-family:'Saira Condensed',sans-serif;font-size:12px}
+.fxpanel .diffs td.fx{color:var(--dim);font-size:10px}
+.fxpanel .hmrow{display:flex;align-items:center;gap:8px;margin:14px 0 4px;font-size:10.5px;color:var(--dim);cursor:pointer;user-select:none}
+.fxpanel .hmrow input{accent-color:var(--accent);cursor:pointer}
+.fxpanel .hmlegend{margin-top:8px}.fxpanel .hmlegend[hidden]{display:none}
+.fxpanel .hmlegend .bar{height:9px;border-radius:2px;background:linear-gradient(90deg,#2b6cff 0%,#26d4d0 33%,#ffd24d 66%,#ff4d6e 100%);box-shadow:0 0 8px rgba(39,224,255,.15)}
+.fxpanel .hmlegend .ticks{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:4px;font-family:'IBM Plex Mono',monospace}
+.fxpanel .caveat{margin-top:14px;padding-top:10px;border-top:1px dashed rgba(120,140,170,.18);color:#7d8aa3;font-size:10px;letter-spacing:.4px;line-height:1.55}
+.fxpanel .caveat b{color:#cfa8ff;font-weight:600}
+.fxpanel .nodata{color:var(--dim);font-size:10.5px;padding:8px 0;line-height:1.5}
+@media(max-width:760px){.fxpanel{display:none}}
 .dossier .empty{color:var(--dim);font-size:10.5px;padding:10px 4px;line-height:1.5}
 @media(max-width:760px){.dossier{display:none}}
 .lab .pin{display:block;width:5px;height:5px;border-radius:50%;background:#bfe9ff;box-shadow:0 0 8px #27e0ff;margin:4px auto 0}
@@ -85,7 +108,8 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 <div class="hud dossier" id="dossier" hidden><div class="k">Country Brief</div><h3 id="dosName">-</h3><div class="sub" id="dosSub">-</div><div id="dosBody"></div></div>
 <div class="hud filters" id="filters"><div class="lbl">Event Layers</div></div>
 <div class="hud density" id="density"><div class="lbl">Density · Min Sources<b id="dval">0</b></div><input type="range" id="dslider" min="0" max="50" value="0" step="1"></div>
-<div class="hud panel"><div class="row"><button class="ctrlbtn" id="spin">自動回転 ON</button><button class="ctrlbtn" id="grid">グリッド</button></div><div class="hint">ドラッグで回転 / スクロールでズーム / ラインにカーソルで要約・クリックで詳細</div></div>
+<div class="hud panel"><div class="row"><button class="ctrlbtn on" id="modeGeo">情勢</button><button class="ctrlbtn" id="modeFx">FX</button></div><div class="row"><button class="ctrlbtn" id="spin">自動回転 ON</button><button class="ctrlbtn" id="grid">グリッド</button></div><div class="hint">ドラッグで回転 / スクロールでズーム / ラインにカーソルで要約・クリックで詳細</div></div>
+<div class="hud fxpanel" id="fxpanel" hidden><div class="lbl">FX Fundamentals</div><table class="ccytab"><thead><tr><th>通貨</th><th>政策</th><th>10年</th><th>CPI</th><th>実質</th></tr></thead><tbody id="ccyRows"></tbody></table><div class="lbl">主要ペア 金利差 (bp · 降順)</div><table class="diffs"><tbody id="diffRows"></tbody></table><label class="hmrow"><input type="checkbox" id="hmChk"> 国塗りを政策金利ヒートマップ</label><div class="hmlegend" id="hmLegend" hidden><div class="bar"></div><div class="ticks"><span id="hmLo">—</span><span id="hmMid">—</span><span id="hmHi">—</span></div></div><div class="caveat"><b>情報表示であり投資助言ではない</b>。価格・利回りは取得時点の確認用。実取引は必ず一次ソースで再確認。<br>出典: FRED · ECB · Frankfurter</div><div class="nodata" id="fxNodata" hidden>macro.json が未配信、もしくはすべての系列が取得失敗。次回 cron 実行を待つか Actions ログを確認。</div></div>
 <div class="hud readout empty" id="readout"><div class="k">Selected Vector</div><div class="route"><span id="rfrom">-</span> <span class="arrow">&rarr;</span> <span id="rto">-</span></div><div class="desc" id="rdesc">光のラインにカーソルで要約、クリックで詳細を表示します。</div><div class="meta"><div>SOURCES<b id="rsrc">-</b></div><div>TYPE<b id="rtype">-</b></div><div>INTENSITY<b id="rint">-</b></div></div><a id="rsrcLink" class="src" target="_blank" rel="noopener" hidden>出典 ↗</a></div>
 <div class="hud notes"><b>考えるヒント</b>誰が／どこで／なぜ — そして「誰の視点で報じているか」を意識して読む。<br>報道ソース数は<b style="display:inline">注目度</b>の指標で、事実性とは別。必ず一次ソース・複数視点で確認を。</div>
 <div id="tip"></div>
@@ -154,7 +178,7 @@ function showCountryTip(c,x,y){tip.style.display='block';
  const w=tip.offsetWidth,h=tip.offsetHeight;let px=x+16,py=y+16;if(px+w>innerWidth-10)px=x-w-16;if(py+h>innerHeight-10)py=y-h-16;tip.style.left=px+'px';tip.style.top=py+'px';}
 fetch('./countries.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(!d||!d.countries)return;
  d.countries.forEach(c=>{const m=buildCountry(c);if(m){countryGroup.add(m);countryMeshes.push(m);}});
- console.log('[ORBIS] countries:',countryMeshes.length);}).catch(e=>console.warn('countries.json:',e));
+ console.log('[ORBIS] countries:',countryMeshes.length);if(typeof applyHeatmap==='function'&&heatmapOn)applyHeatmap();}).catch(e=>console.warn('countries.json:',e));
 const grat=new THREE.Group();globe.add(grat);
 for(let lat=-60;lat<=60;lat+=30){const p=[];for(let l=-180;l<=180;l+=4)p.push(v3(lat,l,R*1.001));grat.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),new THREE.LineBasicMaterial({color:0x163a55,transparent:true,opacity:0.5})));}
 for(let lng=-150;lng<=180;lng+=30){const p=[];for(let l=-80;l<=80;l+=4)p.push(v3(l,lng,R*1.001));grat.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),new THREE.LineBasicMaterial({color:0x163a55,transparent:true,opacity:0.5})));}
@@ -195,11 +219,12 @@ function build(data){
  if(focusCountry&&typeof renderDossier==='function')renderDossier(focusCountry);
 }
 const active={conflict:true,tension:true,coop:true,aid:true,trade:true};
-let hoverArc=null,focusCountry=null,densityMin=0;
+let hoverArc=null,focusCountry=null,densityMin=0,viewMode='geo',heatmapOn=false,macroData=null;
 const DIM={halo:0.04,core:0.30,head:0.40},HOT={halo:0.50,core:1.0,head:1.0};
 function applyVisibility(){
  const focusSet=new Set();
  if(focusCountry){arcs.forEach(a=>{if(a.fromName===focusCountry||a.toName===focusCountry){focusSet.add(a.fromName);focusSet.add(a.toName);}});}
+ const arcScale=(viewMode==='fx')?0.35:1.0;
  arcs.forEach(a=>{
   const typeOk=active[a.type]!==false;
   const srcOk=(a.sources||0)>=densityMin;
@@ -208,9 +233,9 @@ function applyVisibility(){
   a.halo.visible=a.core.visible=a.head.visible=vis;
   if(!vis)return;
   const hot=(a===hoverArc);
-  a.halo.material.opacity=hot?HOT.halo:DIM.halo;
-  a.core.material.opacity=hot?HOT.core:DIM.core;
-  a.head.material.opacity=hot?HOT.head:DIM.head;
+  a.halo.material.opacity=(hot?HOT.halo:DIM.halo)*arcScale;
+  a.core.material.opacity=(hot?HOT.core:DIM.core)*arcScale;
+  a.head.material.opacity=(hot?HOT.head:DIM.head)*arcScale;
  });
  nodes.forEach(n=>{if(!n.el)return;n.el.classList.toggle('dim',!!focusCountry&&!focusSet.has(n.name));});
 }
@@ -323,6 +348,68 @@ function applyFeed(d){const meta=Array.isArray(d)?null:d;const ev=Array.isArray(
  return 'empty';}
 function loadFeed(){fetch('./events.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json();}).then(d=>{if(applyFeed(d)==='empty'){build(SNAP);snapStamp();}}).catch(()=>{if(!liveBuilt){build(SNAP);snapStamp();}});}
 loadFeed();setInterval(loadFeed,120000);
+// ===== FX layer (FIX FX) =====
+const FX_TO_ISO={USD:['USA'],EUR:['DEU','FRA','ITA','ESP','NLD','BEL','AUT','GRC','IRL','PRT','FIN','LUX','SVN','SVK','EST','LVA','LTU','CYP','MLT','HRV'],JPY:['JPN'],GBP:['GBR'],AUD:['AUS'],CAD:['CAN'],CHF:['CHE'],NZD:['NZL']};
+const ISO_TO_CCY={};Object.entries(FX_TO_ISO).forEach(([c,is])=>is.forEach(i=>{ISO_TO_CCY[i]=c;}));
+const fxpanelEl=document.getElementById('fxpanel'),ccyRowsEl=document.getElementById('ccyRows'),diffRowsEl=document.getElementById('diffRows'),fxNodataEl=document.getElementById('fxNodata'),hmChk=document.getElementById('hmChk'),hmLegend=document.getElementById('hmLegend'),hmLoEl=document.getElementById('hmLo'),hmMidEl=document.getElementById('hmMid'),hmHiEl=document.getElementById('hmHi');
+function fmtPct(v){return v==null?'<td class="na">—</td>':'<td>'+(v>=0?'':'')+v.toFixed(2)+'%</td>';}
+function renderFxPanel(){
+ if(!macroData||!macroData.currencies){fxNodataEl.hidden=false;ccyRowsEl.innerHTML='';diffRowsEl.innerHTML='';return;}
+ fxNodataEl.hidden=true;
+ ccyRowsEl.innerHTML='';
+ Object.entries(macroData.currencies).forEach(([code,c])=>{
+  const tr=document.createElement('tr');
+  tr.innerHTML='<td class="ccy">'+code+'</td>'+fmtPct(c.policy_rate)+fmtPct(c.y10)+fmtPct(c.cpi)+fmtPct(c.real_rate);
+  ccyRowsEl.appendChild(tr);
+ });
+ diffRowsEl.innerHTML='';
+ (macroData.pairs||[]).forEach(p=>{
+  const tr=document.createElement('tr');const bp=p.diff_bp;const cls=bp>=0?'pos':'neg';const sign=bp>=0?'+':'';
+  const fxCell=p.fx?('<td class="fx">'+p.fx+'</td>'):'<td class="fx">—</td>';
+  tr.innerHTML='<td>'+p.from+'/'+p.to+'</td><td class="'+cls+'">'+sign+bp.toFixed(0)+' bp</td>'+fxCell;
+  diffRowsEl.appendChild(tr);
+ });
+}
+function rateColor(rate,lo,hi){
+ const t=Math.max(0,Math.min(1,(rate-lo)/(hi-lo||1)));
+ const stops=[[0,43,108,255],[0.33,38,212,208],[0.66,255,210,77],[1,255,77,110]];
+ let i=0;while(i<stops.length-1&&t>stops[i+1][0])i++;
+ const a=stops[i],b=stops[i+1],u=(t-a[0])/(b[0]-a[0]||1);
+ const lerp=(x,y)=>x*(1-u)+y*u;
+ return new THREE.Color(lerp(a[1],b[1])/255,lerp(a[2],b[2])/255,lerp(a[3],b[3])/255);
+}
+function applyHeatmap(){
+ if(!countryMeshes||!countryMeshes.length)return;
+ if(!heatmapOn||!macroData||!macroData.currencies){
+  countryMeshes.forEach(m=>{m.material.color.copy(m.userData.base);m.material.opacity=0.62;});
+  hmLegend.hidden=true;return;}
+ const rates=Object.values(macroData.currencies).map(c=>c.heat_rate).filter(r=>r!=null);
+ if(!rates.length){hmLegend.hidden=true;return;}
+ const lo=Math.min(...rates),hi=Math.max(...rates);
+ hmLoEl.textContent=lo.toFixed(2)+'%';hmHiEl.textContent=hi.toFixed(2)+'%';hmMidEl.textContent=((lo+hi)/2).toFixed(2)+'%';
+ hmLegend.hidden=false;
+ countryMeshes.forEach(m=>{
+  const iso=m.userData.country.iso;const ccy=ISO_TO_CCY[iso];const rec=ccy?macroData.currencies[ccy]:null;
+  if(!rec||rec.heat_rate==null){m.material.color.set('#1a2030');m.material.opacity=0.28;}
+  else{m.material.color.copy(rateColor(rec.heat_rate,lo,hi));m.material.opacity=0.78;}
+ });
+}
+function setViewMode(m){
+ viewMode=m;
+ document.getElementById('modeGeo').classList.toggle('on',m==='geo');
+ document.getElementById('modeFx').classList.toggle('on',m==='fx');
+ const filtersEl=document.getElementById('filters');
+ if(m==='fx'){filtersEl.hidden=true;fxpanelEl.hidden=false;renderFxPanel();}
+ else{filtersEl.hidden=false;fxpanelEl.hidden=true;if(heatmapOn){heatmapOn=false;hmChk.checked=false;applyHeatmap();}}
+ applyVisibility();
+}
+document.getElementById('modeGeo').onclick=()=>setViewMode('geo');
+document.getElementById('modeFx').onclick=()=>setViewMode('fx');
+hmChk.onchange=e=>{heatmapOn=e.target.checked;applyHeatmap();};
+fetch('./macro.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{
+ if(d){macroData=d;renderFxPanel();if(heatmapOn)applyHeatmap();console.log('[ORBIS] macro:',Object.keys(d.currencies||{}).length,'ccy,',(d.pairs||[]).length,'pairs');}
+ else{fxNodataEl.hidden=false;}
+}).catch(e=>{console.warn('macro.json:',e);fxNodataEl.hidden=false;});
 /* removed: */ if(false){
 fetch('./events.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json();}).then(d=>{
  if(Array.isArray(d)&&d.length){build(d);document.getElementById('feed').textContent='LIVE · events.json';document.getElementById('badge').textContent='ライブフィード接続中 · events.json';}
