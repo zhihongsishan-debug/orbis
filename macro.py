@@ -52,15 +52,20 @@ Y10 = {
     "CHF": ["IRLTLT01CHM156N"],
     "NZD": ["IRLTLT01NZM156N"],
 }
+# CPI(前年比) は維持されているインデックス系列から自前で YoY 計算する。
+# 旧OECD成長率系列 (CPALTT01*M657N/659N) は FRED で 2021〜2024 に打ち切られ、
+# AUD/NZD は HTTP400、JPY は最新が "." になっていたため指数系列へ移行。
+# (series_id, kind)  kind: index_m=月次指数→12ヶ月前比 / index_q=四半期指数→4期前比 /
+#                          yoy=既に前年比%の系列(最新有効値をそのまま採用)
 CPI = {
-    "USD": ["CPALTT01USM657N"],
-    "EUR": ["CPHPTT01EZM657N", "CPALTT01EZM657N"],
-    "JPY": ["CPALTT01JPM657N"],
-    "GBP": ["CPALTT01GBM657N"],
-    "AUD": ["CPALTT01AUM657N"],
-    "CAD": ["CPALTT01CAM657N"],
-    "CHF": ["CPALTT01CHM657N"],
-    "NZD": ["CPALTT01NZM657N"],
+    "USD": ("CPIAUCSL", "index_m"),
+    "EUR": ("CP0000EZ19M086NEST", "index_m"),   # ユーロ圏HICP指数
+    "JPY": ("FPCPITOTLZGJPN", "yoy"),           # OECD月次が2021打切り→World Bank年次YoYで代替
+    "GBP": ("GBRCPIALLMINMEI", "index_m"),
+    "AUD": ("AUSCPIALLQINMEI", "index_q"),       # 四半期
+    "CAD": ("CANCPIALLMINMEI", "index_m"),
+    "CHF": ("CHECPIALLMINMEI", "index_m"),
+    "NZD": ("NZLCPIALLQINMEI", "index_q"),       # 四半期
 }
 
 def fred_latest(series_id):
@@ -99,14 +104,90 @@ def first_ok(series_list):
         last_reason = f"{sid}: {reason}"
     return None, None, None, last_reason
 
-def frankfurter_latest():
-    url = "https://api.frankfurter.app/latest"
+def fred_observations(series_id, limit):
+    """最新 limit 件の有効観測を (date, value) の昇順リストで返す。失敗時は ([], reason)。"""
+    url = (
+        "https://api.stlouisfed.org/fred/series/observations"
+        f"?series_id={series_id}&api_key={FRED_KEY}&file_type=json"
+        f"&sort_order=desc&limit={limit}"
+    )
     try:
         with urllib.request.urlopen(url, timeout=30) as r:
-            return json.loads(r.read().decode())
+            d = json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        return [], f"HTTP {e.code}"
+    except Exception as e:
+        return [], type(e).__name__
+    out = []
+    for o in d.get("observations", []):
+        v = o.get("value", ".")
+        if v in (".", ""):
+            continue
+        try:
+            out.append((o.get("date"), float(v)))
+        except ValueError:
+            continue
+    out.reverse()  # 昇順 (最後が最新)
+    return out, (None if out else "empty")
+
+def cpi_yoy(series_id, kind):
+    """前年比CPIを (value, date, note) で返す。取れなければ (None, None, reason)。
+    JPY等 yoy系列はそのまま採用。指数系列は同月(同四半期)の前年値と日付一致で割る。"""
+    if kind == "yoy":
+        obs, reason = fred_observations(series_id, 6)
+        if not obs:
+            return None, None, reason or "empty"
+        d, v = obs[-1]
+        return round(v, 3), d, "yoy-direct"
+    obs, reason = fred_observations(series_id, 26 if kind == "index_m" else 10)
+    if len(obs) < 2:
+        return None, None, reason or "short"
+    bydate = dict(obs)
+    d0, v0 = obs[-1]                      # 最新
+    y, m, dd = d0.split("-")
+    base = bydate.get(f"{int(y)-1}-{m}-{dd}")   # 同月(同四半期)の前年値
+    if not base:                         # 日付が揃わなければ位置で前年分さかのぼる
+        step = 12 if kind == "index_m" else 4
+        if len(obs) > step:
+            base = obs[-1 - step][1]
+    if not base:
+        return None, None, "no-base"
+    return round((v0 / base - 1) * 100, 3), d0, "index-yoy"
+
+def fetch_fx():
+    """EUR基準のレート辞書 (X = 1EURあたりのX) と (source, date) を返す。全滅なら (None, None, None)。
+    1) frankfurter.app → 2) open.er-api.com (キー不要) の順にフォールバック。"""
+    # 1) frankfurter.app
+    try:
+        with urllib.request.urlopen("https://api.frankfurter.app/latest?from=EUR", timeout=25) as r:
+            d = json.loads(r.read().decode())
+        rates = dict(d.get("rates", {})); rates["EUR"] = 1.0
+        if len(rates) > 5:
+            return rates, "frankfurter", d.get("date")
     except Exception as e:
         print(f"  Frankfurter: {type(e).__name__}", file=sys.stderr)
-        return None
+    # 2) open.er-api.com (USDだけでなく任意baseで返る・キー不要)
+    try:
+        with urllib.request.urlopen("https://open.er-api.com/v6/latest/EUR", timeout=25) as r:
+            d = json.loads(r.read().decode())
+        rates = dict(d.get("rates", {})); rates["EUR"] = 1.0
+        date = (d.get("time_last_update_utc") or "")[:25]
+        if len(rates) > 5:
+            return rates, "er-api", date
+    except Exception as e:
+        print(f"  er-api: {type(e).__name__}", file=sys.stderr)
+    return None, None, None
+
+def load_prev_fx():
+    """前回デプロイ済み macro.json から fx を読む(今回FX全滅時の保険)。"""
+    url = os.environ.get("ORBIS_PREV_MACRO_URL",
+                         "https://zhihongsishan-debug.github.io/orbis/macro.json")
+    try:
+        with urllib.request.urlopen(url, timeout=20) as r:
+            d = json.loads(r.read().decode())
+        return d.get("fx") or {}, d.get("fx_date")
+    except Exception:
+        return {}, None
 
 def main():
     out = {
@@ -128,17 +209,27 @@ def main():
             "real_rate": None,
             "heat_rate": None,
         }
-        for label, table in (("policy", POLICY), ("y10", Y10), ("cpi", CPI)):
+        for label, table in (("policy", POLICY), ("y10", Y10)):
             sid, v, d, reason = first_ok(table.get(ccy, []))
             key = f"{ccy}.{label}"
             if v is not None:
                 if label == "policy": rec["policy_rate"] = round(v, 3); rec["policy_date"] = d
-                elif label == "y10": rec["y10"] = round(v, 3); rec["y10_date"] = d
-                else: rec["cpi"] = round(v, 3); rec["cpi_date"] = d
+                else: rec["y10"] = round(v, 3); rec["y10_date"] = d
                 out["sources_used"][key] = sid
                 ok_cnt += 1
             else:
                 out["sources_missing"].append(f"{key} ({reason})")
+                miss_cnt += 1
+        # CPI(前年比) は指数系列から自前計算
+        csid, ckind = CPI.get(ccy, (None, None))
+        if csid:
+            cval, cdate, cnote = cpi_yoy(csid, ckind)
+            if cval is not None:
+                rec["cpi"] = cval; rec["cpi_date"] = cdate
+                out["sources_used"][f"{ccy}.cpi"] = f"{csid} ({cnote})"
+                ok_cnt += 1
+            else:
+                out["sources_missing"].append(f"{ccy}.cpi ({csid}: {cnote})")
                 miss_cnt += 1
 
         if rec["policy_rate"] is not None and rec["cpi"] is not None:
@@ -148,29 +239,33 @@ def main():
         rec["heat_rate"] = rec["policy_rate"] if rec["policy_rate"] is not None else rec["y10"]
         out["currencies"][ccy] = rec
 
-    fx = frankfurter_latest()
-    if fx and "rates" in fx:
-        eur_to = dict(fx["rates"])
-        eur_to["EUR"] = 1.0
-        pair_defs = [
-            ("USD","JPY"),("EUR","USD"),("GBP","USD"),("USD","CHF"),
-            ("AUD","USD"),("NZD","USD"),("USD","CAD"),
-            ("EUR","JPY"),("GBP","JPY"),("EUR","GBP"),
-            ("AUD","JPY"),("EUR","AUD"),("EUR","CHF"),("CHF","JPY"),
-            ("AUD","NZD"),("NZD","JPY"),("GBP","CHF"),("CAD","JPY"),
-        ]
-        for a, b in pair_defs:
-            if a in eur_to and b in eur_to and eur_to[a]:
-                out["fx"][f"{a}{b}"] = round(eur_to[b] / eur_to[a], 4)
-
-    diff_pairs = [
+    PAIR_DEFS = [
         ("USD","JPY"),("EUR","USD"),("GBP","USD"),("USD","CHF"),
         ("AUD","USD"),("NZD","USD"),("USD","CAD"),
         ("EUR","JPY"),("GBP","JPY"),("EUR","GBP"),
         ("AUD","JPY"),("EUR","AUD"),("EUR","CHF"),("CHF","JPY"),
         ("AUD","NZD"),("NZD","JPY"),("GBP","CHF"),("CAD","JPY"),
     ]
-    for a, b in diff_pairs:
+    out["fx_stale"] = False
+    out["fx_source"] = None
+    out["fx_date"] = None
+    rates, fx_src, fx_date = fetch_fx()
+    if rates:
+        out["fx_source"] = fx_src
+        out["fx_date"] = fx_date
+        for a, b in PAIR_DEFS:
+            if a in rates and b in rates and rates[a]:
+                out["fx"][f"{a}{b}"] = round(rates[b] / rates[a], 4)
+    else:
+        # 今回FX全滅 → 前回デプロイ値を流用して空白回避 ((前回値)表示はUI側)
+        prev_fx, prev_date = load_prev_fx()
+        if prev_fx:
+            out["fx"] = prev_fx
+            out["fx_stale"] = True
+            out["fx_source"] = "carried"
+            out["fx_date"] = prev_date
+
+    for a, b in PAIR_DEFS:
         ra = out["currencies"].get(a, {}).get("heat_rate")
         rb = out["currencies"].get(b, {}).get("heat_rate")
         if ra is None or rb is None: continue
@@ -186,7 +281,8 @@ def main():
 
     # 取れた系列と欠損を必ず報告 (キー値そのものは絶対に出さない)
     print(f"macro.json: {len(out['currencies'])} ccy, {len(out['pairs'])} pairs, "
-          f"FX={len(out['fx'])} pairs, FRED OK={ok_cnt} MISS={miss_cnt}")
+          f"FX={len(out['fx'])} pairs (src={out['fx_source']}, stale={out['fx_stale']}, date={out['fx_date']}), "
+          f"FRED OK={ok_cnt} MISS={miss_cnt}")
     if out["sources_used"]:
         print("Used:")
         for k, sid in out["sources_used"].items():

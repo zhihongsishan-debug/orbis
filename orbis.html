@@ -65,6 +65,8 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 .fxpanel .caveat{margin-top:14px;padding-top:10px;border-top:1px dashed rgba(120,140,170,.18);color:#7d8aa3;font-size:10px;letter-spacing:.4px;line-height:1.55}
 .fxpanel .caveat b{color:#cfa8ff;font-weight:600}
 .fxpanel .nodata{color:var(--dim);font-size:10.5px;padding:8px 0;line-height:1.5}
+.fxpanel .fxsrc{font-size:9.5px;letter-spacing:.4px;color:#6f7d93;margin-top:6px}
+.fxpanel .fxsrc.stale{color:#ffd24d}
 @media(max-width:760px){.fxpanel{display:none}}
 .dossier .empty{color:var(--dim);font-size:10.5px;padding:10px 4px;line-height:1.5}
 @media(max-width:760px){.dossier{display:none}}
@@ -109,7 +111,7 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 <div class="hud filters" id="filters"><div class="lbl">Event Layers</div></div>
 <div class="hud density" id="density"><div class="lbl">Density · Min Sources<b id="dval">0</b></div><input type="range" id="dslider" min="0" max="50" value="0" step="1"></div>
 <div class="hud panel"><div class="row"><button class="ctrlbtn on" id="modeGeo">情勢</button><button class="ctrlbtn" id="modeFx">FX</button></div><div class="row"><button class="ctrlbtn" id="spin">自動回転 ON</button><button class="ctrlbtn" id="grid">グリッド</button></div><div class="hint">ドラッグで回転 / スクロールでズーム / ラインにカーソルで要約・クリックで詳細</div></div>
-<div class="hud fxpanel" id="fxpanel" hidden><div class="lbl">FX Fundamentals</div><table class="ccytab"><thead><tr><th>通貨</th><th>政策</th><th>10年</th><th>CPI</th><th>実質</th></tr></thead><tbody id="ccyRows"></tbody></table><div class="lbl">主要ペア 金利差 (bp · 降順)</div><table class="diffs"><tbody id="diffRows"></tbody></table><label class="hmrow"><input type="checkbox" id="hmChk"> 国塗りを政策金利ヒートマップ</label><div class="hmlegend" id="hmLegend" hidden><div class="bar"></div><div class="ticks"><span id="hmLo">—</span><span id="hmMid">—</span><span id="hmHi">—</span></div></div><div class="caveat"><b>情報表示であり投資助言ではない</b>。価格・利回りは取得時点の確認用。実取引は必ず一次ソースで再確認。<br>出典: FRED · ECB · Frankfurter</div><div class="nodata" id="fxNodata" hidden>macro.json が未配信、もしくはすべての系列が取得失敗。次回 cron 実行を待つか Actions ログを確認。</div></div>
+<div class="hud fxpanel" id="fxpanel" hidden><div class="lbl">FX Fundamentals</div><table class="ccytab"><thead><tr><th>通貨</th><th>政策</th><th>10年</th><th>CPI</th><th>実質</th></tr></thead><tbody id="ccyRows"></tbody></table><div class="lbl">主要ペア 金利差 (bp · 降順)</div><table class="diffs"><tbody id="diffRows"></tbody></table><div class="fxsrc" id="fxSrc"></div><label class="hmrow"><input type="checkbox" id="hmChk"> 国塗りを政策金利ヒートマップ</label><div class="hmlegend" id="hmLegend" hidden><div class="bar"></div><div class="ticks"><span id="hmLo">—</span><span id="hmMid">—</span><span id="hmHi">—</span></div></div><div class="caveat"><b>情報表示であり投資助言ではない</b>。価格・利回りは取得時点の確認用。実取引は必ず一次ソースで再確認。<br>出典: FRED · OECD · World Bank · Frankfurter / er-api</div><div class="nodata" id="fxNodata" hidden>macro.json が未配信、もしくはすべての系列が取得失敗。次回 cron 実行を待つか Actions ログを確認。</div></div>
 <div class="hud readout empty" id="readout"><div class="k">Selected Vector</div><div class="route"><span id="rfrom">-</span> <span class="arrow">&rarr;</span> <span id="rto">-</span></div><div class="desc" id="rdesc">光のラインにカーソルで要約、クリックで詳細を表示します。</div><div class="meta"><div>SOURCES<b id="rsrc">-</b></div><div>TYPE<b id="rtype">-</b></div><div>INTENSITY<b id="rint">-</b></div></div><a id="rsrcLink" class="src" target="_blank" rel="noopener" hidden>出典 ↗</a></div>
 <div class="hud notes"><b>考えるヒント</b>誰が／どこで／なぜ — そして「誰の視点で報じているか」を意識して読む。<br>報道ソース数は<b style="display:inline">注目度</b>の指標で、事実性とは別。必ず一次ソース・複数視点で確認を。</div>
 <div id="tip"></div>
@@ -369,6 +371,13 @@ function renderFxPanel(){
   tr.innerHTML='<td>'+p.from+'/'+p.to+'</td><td class="'+cls+'">'+sign+bp.toFixed(0)+' bp</td>'+fxCell;
   diffRowsEl.appendChild(tr);
  });
+ const fxSrcEl=document.getElementById('fxSrc');
+ if(fxSrcEl){
+  const src=macroData.fx_source,dt=macroData.fx_date||'';
+  if(macroData.fx_stale){fxSrcEl.className='fxsrc stale';fxSrcEl.textContent='FXスポット: (前回値) '+dt+' — 最新取得に失敗、前回値を表示中';}
+  else if(src){fxSrcEl.className='fxsrc';fxSrcEl.textContent='FXスポット出典: '+src+(dt?(' · '+dt):'');}
+  else{fxSrcEl.className='fxsrc';fxSrcEl.textContent='';}
+ }
 }
 function rateColor(rate,lo,hi){
  const t=Math.max(0,Math.min(1,(rate-lo)/(hi-lo||1)));
