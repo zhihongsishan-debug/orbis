@@ -1,9 +1,13 @@
 name: Update ORBIS feed
 
-# 15分ごと(best-effort) + 手動実行 + main への push で起動
+# best-effort schedule + 手動実行 + main への push で起動。
+# GitHub の schedule は混雑時にドロップされやすく、特に */15 や :00/:15/:30/:45 の
+# 「丸い分」は最も混雑して落ちやすい。混雑分を避けたオフセット分・20分間隔にして発火率を上げる。
+# (それでも GitHub の cron は best-effort。確実な定期更新が必要なら外部cronから
+#  workflow_dispatch / repository_dispatch を叩く方式が確実。)
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '7,27,47 * * * *'
   workflow_dispatch:
   push:
     branches: [ main ]
