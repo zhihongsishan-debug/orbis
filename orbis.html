@@ -334,9 +334,11 @@ function freshnessUpdate(){
  if(diffMin<1)lab='たった今';
  else if(diffMin<60)lab=diffMin+'分前';
  else{const h=Math.floor(diffMin/60),m=diffMin%60;lab=h+'時間'+(m?(m+'分'):'')+'前';}
+ // GitHubのscheduleは混雑時にドロップされ実質2〜3時間間隔。通常運用が黄に収まり、
+ // 赤は4時間超の本当の停滞時だけ出るようしきい値を緩和 (緑<90分/黄90〜240分/赤>240分)。
  let cls='fresh-ok',warn='';
- if(diffMin>90){cls='fresh-bad';warn=' · 自動更新が停止している可能性 (Actions確認)';}
- else if(diffMin>30){cls='fresh-warn';}
+ if(diffMin>240){cls='fresh-bad';warn=' · 自動更新が停止している可能性 (Actions確認)';}
+ else if(diffMin>90){cls='fresh-warn';}
  const gdelt=lastFeed.gdelt?(' · GDELT '+lastFeed.gdelt):'';
  el.className=cls;el.textContent=lab+' (取得 '+hh+':'+mm+' '+tz+gdelt+')'+warn;}
 function liveStamp(d,label){document.getElementById('feed').textContent='LIVE · events.json';document.getElementById('badge').textContent=label;
@@ -345,8 +347,8 @@ function liveStamp(d,label){document.getElementById('feed').textContent='LIVE ·
 setInterval(freshnessUpdate,30000);
 let liveBuilt=false;
 function applyFeed(d){const meta=Array.isArray(d)?null:d;const ev=Array.isArray(d)?d:(d&&d.events);
- if(ev&&ev.length){build(ev);liveBuilt=true;liveStamp(meta,'ライブフィード接続中 · events.json');return 'live';}
- if(liveBuilt){liveStamp(meta,'ライブフィード接続中 · 直近2hでアーク0本（前回データ表示中）');return 'keep';}
+ if(ev&&ev.length){build(ev);liveBuilt=true;liveStamp(meta,'自動更新フィード · events.json（GitHub Actions・数十分〜数時間間隔）');return 'live';}
+ if(liveBuilt){liveStamp(meta,'自動更新フィード · 直近2hでアーク0本（前回データ表示中）');return 'keep';}
  return 'empty';}
 function loadFeed(){fetch('./events.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json();}).then(d=>{if(applyFeed(d)==='empty'){build(SNAP);snapStamp();}}).catch(()=>{if(!liveBuilt){build(SNAP);snapStamp();}});}
 loadFeed();setInterval(loadFeed,120000);
