@@ -178,20 +178,30 @@ def fetch_fx():
         print(f"  er-api: {type(e).__name__}", file=sys.stderr)
     return None, None, None
 
-def load_prev_fx():
-    """前回デプロイ済み macro.json から fx を読む(今回FX全滅時の保険)。"""
+def load_prev_macro():
+    """前回デプロイ済み macro.json 全体を読む(変化ビュー基準 + FX全滅時の保険)。失敗→None。"""
     url = os.environ.get("ORBIS_PREV_MACRO_URL",
                          "https://zhihongsishan-debug.github.io/orbis/macro.json")
     try:
         with urllib.request.urlopen(url, timeout=20) as r:
-            d = json.loads(r.read().decode())
-        return d.get("fx") or {}, d.get("fx_date")
+            return json.loads(r.read().decode())
     except Exception:
-        return {}, None
+        return None
+
+def _delta(cur, prev, nd=3):
+    return round(cur - prev, nd) if (cur is not None and prev is not None) else None
 
 def main():
+    prev = load_prev_macro()                 # 変化ビューの基準 (前回公開分)
+    prev_cur = (prev.get("currencies", {}) if prev else {})
+    prev_pairs = {}
+    if prev:
+        for p in prev.get("pairs", []):
+            prev_pairs[(p.get("from"), p.get("to"))] = p
     out = {
         "generated_iso": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "compare_to": (prev.get("generated_iso") if prev else None),
+        "compare_available": bool(prev),
         "currencies": {},
         "pairs": [],
         "fx": {},
@@ -237,6 +247,13 @@ def main():
         elif rec["y10"] is not None and rec["cpi"] is not None:
             rec["real_rate"] = round(rec["y10"] - rec["cpi"], 3)
         rec["heat_rate"] = rec["policy_rate"] if rec["policy_rate"] is not None else rec["y10"]
+        # 前回比 (prev / delta) を付与
+        pc = prev_cur.get(ccy) or {}
+        rec["prev"] = {}; rec["delta"] = {}
+        for f in ("policy_rate", "y10", "cpi", "real_rate"):
+            pv = pc.get(f)
+            rec["prev"][f] = pv
+            rec["delta"][f] = _delta(rec[f], pv)
         out["currencies"][ccy] = rec
 
     PAIR_DEFS = [
@@ -258,21 +275,27 @@ def main():
                 out["fx"][f"{a}{b}"] = round(rates[b] / rates[a], 4)
     else:
         # 今回FX全滅 → 前回デプロイ値を流用して空白回避 ((前回値)表示はUI側)
-        prev_fx, prev_date = load_prev_fx()
-        if prev_fx:
-            out["fx"] = prev_fx
+        if prev and prev.get("fx"):
+            out["fx"] = dict(prev["fx"])
             out["fx_stale"] = True
             out["fx_source"] = "carried"
-            out["fx_date"] = prev_date
+            out["fx_date"] = prev.get("fx_date")
 
     for a, b in PAIR_DEFS:
         ra = out["currencies"].get(a, {}).get("heat_rate")
         rb = out["currencies"].get(b, {}).get("heat_rate")
         if ra is None or rb is None: continue
+        diff = round((ra - rb) * 100, 1)
+        fxv = out["fx"].get(f"{a}{b}")
+        pp = prev_pairs.get((a, b)) or {}
         out["pairs"].append({
             "from": a, "to": b,
-            "diff_bp": round((ra - rb) * 100, 1),
-            "fx": out["fx"].get(f"{a}{b}"),
+            "diff_bp": diff,
+            "fx": fxv,
+            "diff_bp_prev": pp.get("diff_bp"),
+            "diff_bp_delta": _delta(diff, pp.get("diff_bp"), 1),
+            "fx_prev": pp.get("fx"),
+            "fx_delta": _delta(fxv, pp.get("fx"), 4),
         })
     out["pairs"].sort(key=lambda x: -abs(x["diff_bp"]))
 
@@ -282,7 +305,8 @@ def main():
     # 取れた系列と欠損を必ず報告 (キー値そのものは絶対に出さない)
     print(f"macro.json: {len(out['currencies'])} ccy, {len(out['pairs'])} pairs, "
           f"FX={len(out['fx'])} pairs (src={out['fx_source']}, stale={out['fx_stale']}, date={out['fx_date']}), "
-          f"FRED OK={ok_cnt} MISS={miss_cnt}")
+          f"FRED OK={ok_cnt} MISS={miss_cnt}, "
+          f"compare={'前回 '+str(out['compare_to']) if out['compare_available'] else '無し(初回)'}")
     if out["sources_used"]:
         print("Used:")
         for k, sid in out["sources_used"].items():

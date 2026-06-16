@@ -7,10 +7,14 @@ v4の変更:
 - 集約後 (国A,国B,type) ごとの合計ソース数で MIN_PAIR_SOURCES によりフィルタ
 - 診断カウンタを出力 ("行数: 全X / 両国コードあり Y / 両方リスト内 Z / A≠B W / 集約ペア P")
 """
-import io, csv, json, time, zipfile, argparse, sys, math, re
+import io, csv, json, time, zipfile, argparse, sys, math, re, os
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 import requests
+
+# 変化(デルタ)ビュー用: run冒頭で公開中の events.json を「前回スナップショット」として取得する。
+PREV_EVENTS_URL = os.environ.get("ORBIS_PREV_EVENTS_URL",
+                                 "https://zhihongsishan-debug.github.io/orbis/events.json")
 
 GDELT_BASE = "http://data.gdeltproject.org/gdeltv2"
 LASTUPDATE = f"{GDELT_BASE}/lastupdate.txt"
@@ -157,16 +161,69 @@ def fetch_events():
     out.sort(key=lambda x: x["sources"], reverse=True)
     return out[:TOP_N], gdelt_label(latest_ts)
 
+def load_prev_events():
+    """公開中の events.json を取得し (prev_map, generated_iso) を返す。失敗→(None,None)。
+    prev_map: {(fromName,toName,type): sources}"""
+    try:
+        r = requests.get(PREV_EVENTS_URL, timeout=20)
+        if r.status_code != 200:
+            return None, None
+        d = r.json()
+    except Exception as e:
+        print(f"  前回 events.json 取得失敗: {type(e).__name__}", file=sys.stderr)
+        return None, None
+    evs = d.get("events") if isinstance(d, dict) else d
+    if not isinstance(evs, list):
+        return None, None
+    pm = {}
+    for e in evs:
+        pm[(e.get("fromName"), e.get("toName"), e.get("type"))] = e.get("sources", 0)
+    return pm, (d.get("generated_iso") if isinstance(d, dict) else None)
+
+def compute_changes(ev, prev_map):
+    """各イベントに prev_sources/delta_sources/is_new を付与し、変化サマリを返す。
+    prev が無ければ available:False (初回扱い)。"""
+    if prev_map is None:
+        return {"available": False, "newly_active": [], "attention_up": [], "cooling": []}
+    cur_keys = set()
+    for e in ev:
+        k = (e["fromName"], e["toName"], e["type"])
+        cur_keys.add(k)
+        ps = prev_map.get(k)
+        if ps is None:
+            e["prev_sources"] = None; e["delta_sources"] = None; e["is_new"] = True
+        else:
+            e["prev_sources"] = ps; e["delta_sources"] = e["sources"] - ps; e["is_new"] = False
+    def row(e, extra=None):
+        d = {"fromName": e["fromName"], "toName": e["toName"], "type": e["type"], "sources": e["sources"]}
+        if extra: d.update(extra)
+        return d
+    newly = sorted([row(e) for e in ev if e.get("is_new")], key=lambda x: -x["sources"])
+    up = sorted([row(e, {"delta": e["delta_sources"]}) for e in ev
+                 if e.get("delta_sources") and e["delta_sources"] > 0], key=lambda x: -x["delta"])
+    cooling = sorted([{"fromName": k[0], "toName": k[1], "type": k[2], "sources": ps}
+                      for k, ps in prev_map.items() if k not in cur_keys], key=lambda x: -x["sources"])
+    return {"available": True, "newly_active": newly[:8], "attention_up": up[:6], "cooling": cooling[:8]}
+
 def run_once():
+    prev_map, prev_iso = load_prev_events()
     ev, gdelt_ts = fetch_events()
+    changes = compute_changes(ev, prev_map)
     payload = {
         "generated": time.strftime("%Y-%m-%d %H:%M:%S"),
         "generated_iso": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "gdelt": gdelt_ts,
+        "compare_to": prev_iso,
+        "changes": changes,
         "events": ev,
     }
     json.dump(payload, open("events.json", "w", encoding="utf-8"), ensure_ascii=False)
+    c = changes
     print(f"[{time.strftime('%H:%M:%S')}] events.json 更新: {len(ev)} 本 / GDELT {gdelt_ts}")
+    if c["available"]:
+        print(f"  変化 (前回 {prev_iso} 比): 新規 {len(c['newly_active'])} / 増加 {len(c['attention_up'])} / 沈静 {len(c['cooling'])}")
+    else:
+        print("  変化: 前回データ無し (初回・基準として保存)")
 
 def main():
     ap = argparse.ArgumentParser()

@@ -44,14 +44,15 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 .notes b{color:#cfa8ff;font-weight:600;letter-spacing:1px;display:block;font-size:9px;margin-bottom:3px;text-transform:uppercase}
 @media(max-width:760px){.notes{display:none}}
 .ctrlbtn.on{background:rgba(39,224,255,.12);color:var(--accent);border-color:rgba(39,224,255,.6)}
-.fxpanel{top:30px;right:44px;width:320px;max-height:80vh;background:rgba(10,14,22,.78);border:1px solid var(--line);border-radius:4px;padding:14px 16px;backdrop-filter:blur(8px);color:var(--ink);font-size:11px;overflow-y:auto}
+.fxpanel{top:30px;right:44px;width:384px;max-height:80vh;background:rgba(10,14,22,.78);border:1px solid var(--line);border-radius:4px;padding:14px 16px;backdrop-filter:blur(8px);color:var(--ink);font-size:11px;overflow-y:auto}
+.fxpanel table{table-layout:fixed}
 .fxpanel[hidden]{display:none}
 .fxpanel .lbl{font-size:9.5px;letter-spacing:3px;color:var(--dim);margin:12px 0 6px;text-transform:uppercase}
 .fxpanel .lbl:first-child{margin-top:0}
 .fxpanel table{width:100%;border-collapse:collapse;font-size:11px}
 .fxpanel th{font-size:9px;letter-spacing:1.5px;color:var(--dim);text-align:right;padding:5px 6px;border-bottom:1px solid var(--line);font-weight:500;text-transform:uppercase}
 .fxpanel th:first-child{text-align:left}
-.fxpanel td{padding:4px 6px;text-align:right;color:#cfe0ef;border-bottom:1px solid rgba(27,36,51,.5);font-family:'IBM Plex Mono',monospace}
+.fxpanel td{padding:4px 4px;text-align:right;color:#cfe0ef;border-bottom:1px solid rgba(27,36,51,.5);font-family:'IBM Plex Mono',monospace;white-space:nowrap}
 .fxpanel td.ccy{text-align:left;color:#fff;font-family:'Saira Condensed',sans-serif;font-weight:600;letter-spacing:1px;font-size:13px}
 .fxpanel td.na{color:#566073}
 .fxpanel td.pos{color:#7df3a0}.fxpanel td.neg{color:#ff8aa0}
@@ -68,6 +69,27 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 .fxpanel .fxsrc{font-size:9.5px;letter-spacing:.4px;color:#6f7d93;margin-top:6px}
 .fxpanel .fxsrc.stale{color:#ffd24d}
 @media(max-width:760px){.fxpanel{display:none}}
+/* 変化(デルタ)表示: 上昇=緑/下降=赤の増減色のみ(良し悪し判断はしない) */
+.dlt{font-size:9px;letter-spacing:0;margin-left:5px;font-family:'IBM Plex Mono',monospace}
+.dlt.up{color:#7df3a0}.dlt.dn{color:#ff8aa0}.dlt.flat{color:#566073}
+.fxpanel .fxcmp{font-size:9px;letter-spacing:1px;color:#6f7d93;font-weight:400;text-transform:none;margin-left:6px}
+.changes{top:178px;left:40px;width:288px;max-height:38vh;overflow-y:auto;background:rgba(10,14,22,.74);border:1px solid var(--line);border-radius:4px;padding:12px 14px;backdrop-filter:blur(8px)}
+.changes[hidden]{display:none}
+.changes .hd{display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:9.5px;letter-spacing:3px;color:var(--dim);text-transform:uppercase}
+.changes .hd .tw{color:#cfe8ff;font-size:11px}
+.changes .cmp{font-size:9px;letter-spacing:.5px;color:#6f7d93;margin:4px 0 2px}
+.changes .body[hidden]{display:none}
+.changes .grp{margin-top:8px}
+.changes .gh{font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin:6px 0 3px}
+.changes .row{display:flex;align-items:center;gap:6px;padding:4px 6px;font-size:11px;cursor:pointer;border-radius:2px;color:#cfe0ef;transition:background .15s}
+.changes .row:hover{background:rgba(39,224,255,.10);color:#fff}
+.changes .row .sw{width:7px;height:7px;border-radius:1px;flex:0 0 auto}
+.changes .row .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.changes .row .v{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);flex:0 0 auto}
+.changes .newbadge{font-size:8px;letter-spacing:1px;color:#04060c;background:#7df3a0;border-radius:2px;padding:1px 4px;font-weight:700}
+.changes .empty{color:var(--dim);font-size:10.5px;padding:8px 2px;line-height:1.5}
+.changes .foot{margin-top:10px;padding-top:8px;border-top:1px dashed rgba(120,140,170,.18);color:#7d8aa3;font-size:9.5px;line-height:1.5}
+@media(max-width:760px){.changes{display:none}}
 .dossier .empty{color:var(--dim);font-size:10.5px;padding:10px 4px;line-height:1.5}
 @media(max-width:760px){.dossier{display:none}}
 .lab .pin{display:block;width:5px;height:5px;border-radius:50%;background:#bfe9ff;box-shadow:0 0 8px #27e0ff;margin:4px auto 0}
@@ -108,10 +130,11 @@ html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font
 <div class="hud badge" id="badge">報道集約スナップショット · 2026-05-30</div>
 <div class="hud focus" id="focus" hidden>FOCUS <b id="focusName">-</b><span class="x" id="focusX">×</span></div>
 <div class="hud dossier" id="dossier" hidden><div class="k">Country Brief</div><h3 id="dosName">-</h3><div class="sub" id="dosSub">-</div><div id="dosBody"></div></div>
+<div class="hud changes" id="changes" hidden><div class="hd" id="changesHd"><span>変化 / What Changed</span><span class="tw" id="changesTw">▾</span></div><div class="cmp" id="changesCmp"></div><div class="body" id="changesBody"></div></div>
 <div class="hud filters" id="filters"><div class="lbl">Event Layers</div></div>
 <div class="hud density" id="density"><div class="lbl">Density · Min Sources<b id="dval">0</b></div><input type="range" id="dslider" min="0" max="50" value="0" step="1"></div>
 <div class="hud panel"><div class="row"><button class="ctrlbtn on" id="modeGeo">情勢</button><button class="ctrlbtn" id="modeFx">FX</button></div><div class="row"><button class="ctrlbtn" id="spin">自動回転 ON</button><button class="ctrlbtn" id="grid">グリッド</button></div><div class="hint">ドラッグで回転 / スクロールでズーム / ラインにカーソルで要約・クリックで詳細</div></div>
-<div class="hud fxpanel" id="fxpanel" hidden><div class="lbl">FX Fundamentals</div><table class="ccytab"><thead><tr><th>通貨</th><th>政策</th><th>10年</th><th>CPI</th><th>実質</th></tr></thead><tbody id="ccyRows"></tbody></table><div class="lbl">主要ペア 金利差 (bp · 降順)</div><table class="diffs"><tbody id="diffRows"></tbody></table><div class="fxsrc" id="fxSrc"></div><label class="hmrow"><input type="checkbox" id="hmChk"> 国塗りを政策金利ヒートマップ</label><div class="hmlegend" id="hmLegend" hidden><div class="bar"></div><div class="ticks"><span id="hmLo">—</span><span id="hmMid">—</span><span id="hmHi">—</span></div></div><div class="caveat"><b>情報表示であり投資助言ではない</b>。価格・利回りは取得時点の確認用。実取引は必ず一次ソースで再確認。<br>出典: FRED · OECD · World Bank · Frankfurter / er-api</div><div class="nodata" id="fxNodata" hidden>macro.json が未配信、もしくはすべての系列が取得失敗。次回 cron 実行を待つか Actions ログを確認。</div></div>
+<div class="hud fxpanel" id="fxpanel" hidden><div class="lbl">FX Fundamentals<span class="fxcmp" id="fxCompare"></span></div><table class="ccytab"><thead><tr><th>通貨</th><th>政策</th><th>10年</th><th>CPI</th><th>実質</th></tr></thead><tbody id="ccyRows"></tbody></table><div class="lbl">主要ペア 金利差 (bp · 降順)</div><table class="diffs"><tbody id="diffRows"></tbody></table><div class="fxsrc" id="fxSrc"></div><label class="hmrow"><input type="checkbox" id="hmChk"> 国塗りを政策金利ヒートマップ</label><div class="hmlegend" id="hmLegend" hidden><div class="bar"></div><div class="ticks"><span id="hmLo">—</span><span id="hmMid">—</span><span id="hmHi">—</span></div></div><div class="caveat"><b>情報表示であり投資助言ではない</b>。価格・利回りは取得時点の確認用。実取引は必ず一次ソースで再確認。前回比(▲▼)はデータ改定で小さく動くことがある。<br>出典: FRED · OECD · World Bank · Frankfurter / er-api</div><div class="nodata" id="fxNodata" hidden>macro.json が未配信、もしくはすべての系列が取得失敗。次回 cron 実行を待つか Actions ログを確認。</div></div>
 <div class="hud readout empty" id="readout"><div class="k">Selected Vector</div><div class="route"><span id="rfrom">-</span> <span class="arrow">&rarr;</span> <span id="rto">-</span></div><div class="desc" id="rdesc">光のラインにカーソルで要約、クリックで詳細を表示します。</div><div class="meta"><div>SOURCES<b id="rsrc">-</b></div><div>TYPE<b id="rtype">-</b></div><div>INTENSITY<b id="rint">-</b></div></div><a id="rsrcLink" class="src" target="_blank" rel="noopener" hidden>出典 ↗</a></div>
 <div class="hud notes"><b>考えるヒント</b>誰が／どこで／なぜ — そして「誰の視点で報じているか」を意識して読む。<br>報道ソース数は<b style="display:inline">注目度</b>の指標で、事実性とは別。必ず一次ソース・複数視点で確認を。</div>
 <div id="tip"></div>
@@ -221,7 +244,7 @@ function build(data){
  if(focusCountry&&typeof renderDossier==='function')renderDossier(focusCountry);
 }
 const active={conflict:true,tension:true,coop:true,aid:true,trade:true};
-let hoverArc=null,focusCountry=null,densityMin=0,viewMode='geo',heatmapOn=false,macroData=null;
+let hoverArc=null,focusCountry=null,densityMin=0,viewMode='geo',heatmapOn=false,macroData=null,feedData=null,changesOpen=true;
 const DIM={halo:0.04,core:0.30,head:0.40},HOT={halo:0.50,core:1.0,head:1.0};
 function applyVisibility(){
  const focusSet=new Set();
@@ -312,7 +335,8 @@ function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h);cam.asp
 addEventListener('resize',resize);resize();
 const tmp=new THREE.Vector3();let t=0;
 function loop(){requestAnimationFrame(loop);t+=0.016;if(autoR&&!drag)ry+=0.0016;globe.rotation.y=ry;globe.rotation.x=rx;globe.updateMatrixWorld();
- arcs.forEach(a=>{if(!a.head.visible)return;a.head.position.copy(a.curve.getPoint((t*a.speed+a.phase)%1));});
+ arcs.forEach(a=>{if(!a.head.visible)return;a.head.position.copy(a.curve.getPoint((t*a.speed+a.phase)%1));
+  if(a.is_new){const s=8+Math.sin(t*4)*3.2;a.head.scale.set(s,s,s);}});
  nodes.forEach(n=>{tmp.copy(n.loc).applyMatrix4(globe.matrixWorld);const facing=tmp.clone().normalize().dot(cam.position.clone().sub(tmp).normalize());
   if(facing<0.04){n.el.style.opacity=0;return;}const p=tmp.clone().project(cam);if(p.z>1){n.el.style.opacity=0;return;}
   n.el.style.opacity=Math.min(1,(facing-0.04)*4);n.el.style.left=((p.x*.5+.5)*innerWidth)+'px';n.el.style.top=((-p.y*.5+.5)*innerHeight)+'px';});
@@ -347,30 +371,79 @@ function liveStamp(d,label){document.getElementById('feed').textContent='LIVE ·
 setInterval(freshnessUpdate,30000);
 let liveBuilt=false;
 function applyFeed(d){const meta=Array.isArray(d)?null:d;const ev=Array.isArray(d)?d:(d&&d.events);
- if(ev&&ev.length){build(ev);liveBuilt=true;liveStamp(meta,'自動更新フィード · events.json（GitHub Actions・数十分〜数時間間隔）');return 'live';}
- if(liveBuilt){liveStamp(meta,'自動更新フィード · 直近2hでアーク0本（前回データ表示中）');return 'keep';}
+ feedData=meta;
+ if(ev&&ev.length){build(ev);liveBuilt=true;liveStamp(meta,'自動更新フィード · events.json（GitHub Actions・数十分〜数時間間隔）');renderChanges();return 'live';}
+ if(liveBuilt){liveStamp(meta,'自動更新フィード · 直近2hでアーク0本（前回データ表示中）');renderChanges();return 'keep';}
  return 'empty';}
+// 変化 / What Changed セクション (情勢モード)
+const TYPE_LABELS={conflict:['武力衝突','#ff2d55'],tension:['緊張・威圧','#ffae33'],coop:['外交・協調','#27e0ff'],aid:['支援・経済','#34ffb0'],trade:['貿易回廊','#b46bff']};
+function renderChanges(){
+ const bodyEl=document.getElementById('changesBody'),cmpEl=document.getElementById('changesCmp');
+ if(!bodyEl)return;
+ const ch=feedData&&feedData.changes;
+ if(!ch||!ch.available){
+  cmpEl.textContent='';
+  bodyEl.innerHTML='<div class="empty">比較データ蓄積中（次の更新から変化を表示）。</div>';
+  return;}
+ cmpEl.textContent='前回比 '+agoText(feedData.compare_to);
+ const sw=t=>'<span class="sw" style="background:'+((TYPE_LABELS[t]||['','#888'])[1])+'"></span>';
+ function rowEl(o,vtext,isNew){
+  const r=document.createElement('div');r.className='row';
+  r.innerHTML=sw(o.type)+'<span class="nm">'+o.fromName+' → '+o.toName+'</span>'+(isNew?'<span class="newbadge">NEW</span>':'')+'<span class="v">'+vtext+'</span>';
+  r.onclick=ev=>{ev.stopPropagation();setFocus(o.fromName);};
+  return r;}
+ function grp(title,items,fn){
+  if(!items||!items.length)return null;
+  const g=document.createElement('div');g.className='grp';g.innerHTML='<div class="gh">'+title+' ('+items.length+')</div>';
+  items.forEach(o=>g.appendChild(fn(o)));return g;}
+ bodyEl.innerHTML='';
+ const g1=grp('新規 Newly Active',ch.newly_active,o=>rowEl(o,'報道'+o.sources,true));
+ const g2=grp('注目度↑ Attention Up',ch.attention_up,o=>rowEl(o,'<span class="dlt up">▲+'+o.delta+'</span>',false));
+ const g3=grp('沈静 Cooling',ch.cooling,o=>rowEl(o,'前回'+o.sources,false));
+ [g1,g2,g3].forEach(g=>{if(g)bodyEl.appendChild(g);});
+ if(!g1&&!g2&&!g3)bodyEl.innerHTML='<div class="empty">前回から目立った変化はありません。</div>';
+ const foot=document.createElement('div');foot.className='foot';
+ foot.textContent='変化＝報道の増減であって、必ずしも現実の変化ではありません。';
+ bodyEl.appendChild(foot);}
+document.getElementById('changesHd').onclick=()=>{changesOpen=!changesOpen;
+ document.getElementById('changesBody').hidden=!changesOpen;
+ document.getElementById('changesCmp').hidden=!changesOpen;
+ document.getElementById('changesTw').textContent=changesOpen?'▾':'▸';};
 function loadFeed(){fetch('./events.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json();}).then(d=>{if(applyFeed(d)==='empty'){build(SNAP);snapStamp();}}).catch(()=>{if(!liveBuilt){build(SNAP);snapStamp();}});}
+if(viewMode==='geo'){document.getElementById('changes').hidden=false;renderChanges();}
 loadFeed();setInterval(loadFeed,120000);
 // ===== FX layer (FIX FX) =====
 const FX_TO_ISO={USD:['USA'],EUR:['DEU','FRA','ITA','ESP','NLD','BEL','AUT','GRC','IRL','PRT','FIN','LUX','SVN','SVK','EST','LVA','LTU','CYP','MLT','HRV'],JPY:['JPN'],GBP:['GBR'],AUD:['AUS'],CAD:['CAN'],CHF:['CHE'],NZD:['NZL']};
 const ISO_TO_CCY={};Object.entries(FX_TO_ISO).forEach(([c,is])=>is.forEach(i=>{ISO_TO_CCY[i]=c;}));
 const fxpanelEl=document.getElementById('fxpanel'),ccyRowsEl=document.getElementById('ccyRows'),diffRowsEl=document.getElementById('diffRows'),fxNodataEl=document.getElementById('fxNodata'),hmChk=document.getElementById('hmChk'),hmLegend=document.getElementById('hmLegend'),hmLoEl=document.getElementById('hmLo'),hmMidEl=document.getElementById('hmMid'),hmHiEl=document.getElementById('hmHi');
-function fmtPct(v){return v==null?'<td class="na">—</td>':'<td>'+(v>=0?'':'')+v.toFixed(2)+'%</td>';}
+// 相対経過 "約N時間前 / N分前"
+function agoText(iso){if(!iso)return'';const t=new Date(iso);if(isNaN(t))return'';
+ const m=Math.max(0,Math.round((Date.now()-t.getTime())/60000));
+ if(m<60)return'約'+m+'分前';const h=Math.floor(m/60);return'約'+h+'時間'+(m%60?(m%60+'分'):'')+'前';}
+// 増減バッジ (上昇=緑/下降=赤、良し悪し判断はしない)。delta=null→空
+function deltaHtml(delta,digits,unit){
+ if(delta==null||isNaN(delta))return'';
+ if(Math.abs(delta)<0.5/Math.pow(10,digits))return'';   // 丸めて0は非表示(雑音回避)
+ const cls=delta>0?'up':'dn';const ar=delta>0?'▲+':'▼';
+ return '<span class="dlt '+cls+'">'+ar+Math.abs(delta).toFixed(digits)+(unit||'')+'</span>';}
+function fmtPct(v,delta){return v==null?'<td class="na">—</td>':'<td>'+v.toFixed(2)+'%'+deltaHtml(delta==null?null:delta,2)+'</td>';}
 function renderFxPanel(){
  if(!macroData||!macroData.currencies){fxNodataEl.hidden=false;ccyRowsEl.innerHTML='';diffRowsEl.innerHTML='';return;}
  fxNodataEl.hidden=true;
+ const cmpEl=document.getElementById('fxCompare');
+ if(cmpEl)cmpEl.textContent=macroData.compare_available?('前回比 '+agoText(macroData.compare_to)):'（初回・比較データ蓄積中）';
  ccyRowsEl.innerHTML='';
  Object.entries(macroData.currencies).forEach(([code,c])=>{
+  const dl=c.delta||{};
   const tr=document.createElement('tr');
-  tr.innerHTML='<td class="ccy">'+code+'</td>'+fmtPct(c.policy_rate)+fmtPct(c.y10)+fmtPct(c.cpi)+fmtPct(c.real_rate);
+  tr.innerHTML='<td class="ccy">'+code+'</td>'+fmtPct(c.policy_rate,dl.policy_rate)+fmtPct(c.y10,dl.y10)+fmtPct(c.cpi,dl.cpi)+fmtPct(c.real_rate,dl.real_rate);
   ccyRowsEl.appendChild(tr);
  });
  diffRowsEl.innerHTML='';
  (macroData.pairs||[]).forEach(p=>{
   const tr=document.createElement('tr');const bp=p.diff_bp;const cls=bp>=0?'pos':'neg';const sign=bp>=0?'+':'';
-  const fxCell=p.fx?('<td class="fx">'+p.fx+'</td>'):'<td class="fx">—</td>';
-  tr.innerHTML='<td>'+p.from+'/'+p.to+'</td><td class="'+cls+'">'+sign+bp.toFixed(0)+' bp</td>'+fxCell;
+  const fxCell=p.fx?('<td class="fx">'+p.fx+deltaHtml(p.fx_delta,4)+'</td>'):'<td class="fx">—</td>';
+  tr.innerHTML='<td>'+p.from+'/'+p.to+'</td><td class="'+cls+'">'+sign+bp.toFixed(0)+' bp'+deltaHtml(p.diff_bp_delta,0,' bp')+'</td>'+fxCell;
   diffRowsEl.appendChild(tr);
  });
  const fxSrcEl=document.getElementById('fxSrc');
@@ -410,8 +483,9 @@ function setViewMode(m){
  document.getElementById('modeGeo').classList.toggle('on',m==='geo');
  document.getElementById('modeFx').classList.toggle('on',m==='fx');
  const filtersEl=document.getElementById('filters');
- if(m==='fx'){filtersEl.hidden=true;fxpanelEl.hidden=false;renderFxPanel();}
- else{filtersEl.hidden=false;fxpanelEl.hidden=true;if(heatmapOn){heatmapOn=false;hmChk.checked=false;applyHeatmap();}}
+ const changesEl=document.getElementById('changes');
+ if(m==='fx'){filtersEl.hidden=true;fxpanelEl.hidden=false;changesEl.hidden=true;renderFxPanel();}
+ else{filtersEl.hidden=false;fxpanelEl.hidden=true;changesEl.hidden=false;renderChanges();if(heatmapOn){heatmapOn=false;hmChk.checked=false;applyHeatmap();}}
  applyVisibility();
 }
 document.getElementById('modeGeo').onclick=()=>setViewMode('geo');
